@@ -8,6 +8,11 @@
 #include "qfunc.h"
 
 
+void terror(char *s)
+{
+  printf(s);
+  exit(1);
+}
 
 
 struct params *CommandLine(int argc, char *argv[]) {

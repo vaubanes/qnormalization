@@ -4,3 +4,7 @@ You need the openmpi package, e.g. on Debian:
 
   apt-get install openmpi-dev
 
+compile with
+
+  make all
+
