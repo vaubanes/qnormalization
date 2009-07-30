@@ -1,8 +1,11 @@
 /******************************************************************************
-* FILE: Qnorm.h
+* FILE: Qfunc.h
 * ots@ac.uma.es
 * LAST REVISED: 23/02/09
 ******************************************************************************/
+
+#ifndef __QFUNC_H
+#define __QFUNC_H
 
 #include <stdio.h>
 #include <string.h>
@@ -20,14 +23,14 @@
 
 
 struct Files { // LIst of files
-   char *fname;
-   int nG;
-   char fType;
+  char *fname;
+  int nG;
+  char fType;
 };
 
 struct Average { // Average array
-   double Av;
-   int num;
+  double Av;
+  int num;
 };
 
 
@@ -50,7 +53,7 @@ void LoadFile(struct Files*, int, double *,int nG);
 void terror(char *);
 void Alerta(char *,char *);
 
-void DebugPrint(char *, double*, int); 
+void DebugPrint(char *, double*, int);
 int  TransposeBin2Txt(struct params*);
 void QsortC(double *array,int l,int r,int *index);
 int partition( double* a, int l, int r, int *indexes);
@@ -66,3 +69,5 @@ int calculateIndexBlocks(int *index,int nE);
 
 
 // ===============================================================================
+
+#endif // __QFUNC_H

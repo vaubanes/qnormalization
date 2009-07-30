@@ -5,6 +5,7 @@
 ******************************************************************************/
 
 #include <stdio.h>
+#include <stdlib.h>
 
 
 
@@ -12,7 +13,7 @@
 
 
 struct stack {                              // stack element.
-        int a,b;
+  int a,b;
 } * s;
 
 
@@ -20,4 +21,4 @@ struct stack {                              // stack element.
 
 void interchange(double *x, double *y);
 void interchangeIndex(int * dIndex, int index1,int index2);
-  
+

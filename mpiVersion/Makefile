@@ -1,5 +1,5 @@
 CC = mpicc
-LFLAGS = -lm
+LFLAGS = -lm -Wall
 
 OBJS = Qnorm.o Qfunc.o quicksort.o
 
