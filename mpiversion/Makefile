@@ -1,4 +1,3 @@
-# CC = gcc
 CC = mpicc 
 CFLAGS = -Wall -c
 LFLAGS = -lm
