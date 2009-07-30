@@ -1,19 +1,21 @@
-CC = mpicc
-LFLAGS = -lm -Wall
+# CC = gcc
+CC = mpicc 
+CFLAGS = -Wall
+LFLAGS = -lm
 
-OBJS = Qnorm.o Qfunc.o quicksort.o
+OBJS = qnorm.o qfunc.o quicksort.o
 
-Qnorm: ${OBJS}
-	${CC} ${LFLAGS} ${OBJS} -o Qnorm
+qnorm: ${OBJS}
+	${CC} ${LFLAGS} ${OBJS} -o qnorm
 
 qnorm.o: qnorm.c
-	${CC} ${LFLAGS} -c Qnorm.c
+	${CC} ${CFLAGS} Qnorm.c
 
-qFunc.o: Qfunc.c 
-	${CC} ${LFLAGS} -c qFunc.c
+qfunc.o: qfunc.c 
+	${CC} ${CFLAGS} qfunc.c
 
 quicksort.o: quicksort.c 
-	${CC} ${LFLAGS} -c quicksort.c
+	${CC} ${CFLAGS} quicksort.c
 
 clean:
 	rm -f ${OBJS}

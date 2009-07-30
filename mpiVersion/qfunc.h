@@ -4,8 +4,7 @@
 * LAST REVISED: 23/02/09
 ******************************************************************************/
 
-#ifndef __QFUNC_H
-#define __QFUNC_H
+#pragma once
 
 #include <stdio.h>
 #include <string.h>
@@ -47,7 +46,7 @@ struct params {// Parameters struct-----------------
 // Function protorypes------------------------------------------
 
 // general functions
-struct params *CommandLine(int, char **);
+struct params *CommandLine(int argc, char *argv[]);
 struct Files* LoadListOfFiles(struct params *);
 void LoadFile(struct Files*, int, double *,int nG);
 void terror(char *);
@@ -70,4 +69,3 @@ int calculateIndexBlocks(int *index,int nE);
 
 // ===============================================================================
 
-#endif // __QFUNC_H
