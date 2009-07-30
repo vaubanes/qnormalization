@@ -17,11 +17,11 @@ mpi_qnorm: ${OBJS}
 	${CC} ${LFLAGS} ${OBJS} -o mpi_qnorm
 
 all: mpi_qnorm
-.PHONY : all
 
 default_target: all
-.PHONY : default_target
 
 clean:
 	rm -f ${OBJS}
-.PHONY : clean
+
+test: mpi_qnorm
+	./mpi_qnorm example_input
