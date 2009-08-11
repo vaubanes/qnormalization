@@ -1,8 +1,12 @@
-/******************************************************************************
-* FILE: Qfunc.h
-* ots@ac.uma.es
-* LAST REVISED: 23/02/09
-******************************************************************************/
+/**
+* qfunc.h
+*
+*  Author : José Manuel Mateos
+*
+**/
+
+#ifndef QFUNC_H_
+#define QFUNC_H_
 
 #pragma once
 
@@ -65,7 +69,7 @@ int calculateBlocks(int nE);
 int calculateInitialBlocks(int numBlocks, int nProcesors);
 int calculateIndexBlocks(int *index,int nE);
 
-
+#endif /* QFUNC_H_ */
 
 // ===============================================================================
 

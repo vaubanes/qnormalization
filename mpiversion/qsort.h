@@ -1,20 +1,28 @@
-/******************************************************************************
-* FILE: quicksort.h
-* jmateos@uma.es
-* LAST REVISED: 13/04/09
-******************************************************************************/
+/*
+ * qsort.h
+ *
+ *
+ *      Author: Jose Manuel Mateos
+ */
+
+#ifndef QSORT_H_
+#define QSORT_H_
 
 #pragma once
-
-#include <stdio.h>
-#include <stdlib.h>
 
 #define SMALLSIZE       10            // not less than 3
 
 struct stack {                              // stack element.
   int a,b;
-} * s;
+};
+
 
 void interchange(double *x, double *y);
 void interchangeIndex(int * dIndex, int index1,int index2);
+void split(double * array,int * dIndex, int first,int last,int *splitpoint);
+void push(int a,int b);
+void pop(int *a,int *b);
+void insertion_sort(double * array,int *index, int first,int last);
+void quicksort(double * array,int * dIndex, int size);
 
+#endif /* QSORT_H_ */

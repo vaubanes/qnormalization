@@ -1,8 +1,8 @@
 /*
  * qnorm.h
  *
- *  Created on: 11/08/2009
- *      Author: bitlab
+ *
+ *      Author: Jose Manuel Mateos
  */
 
 #ifndef QNORM_H_
