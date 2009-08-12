@@ -8,7 +8,7 @@
 #ifndef QSORT_H_
 #define QSORT_H_
 
-#pragma once
+
 
 #define SMALLSIZE       10            // not less than 3
 
@@ -18,7 +18,7 @@ struct stack {                              // stack element.
 
 
 void interchange(double *x, double *y);
-void interchangeIndex(int * dIndex, int index1,int index2);
+void interchange_index(int * dIndex, int index1,int index2);
 void split(double * array,int * dIndex, int first,int last,int *splitpoint);
 void push(int a,int b);
 void pop(int *a,int *b);

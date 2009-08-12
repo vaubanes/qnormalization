@@ -7,8 +7,13 @@
 ******************************************************************************/
 
 #include "qsort.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 int top = -1;
+
+
+struct stack *s;
 
 void interchange(double *x,double *y) {      // swap
   double temp;
@@ -21,7 +26,7 @@ void interchange(double *x,double *y) {      // swap
 }
 
 
-void interchangeIndex(int * dIndex, int index1, int index2) {
+void interchange_index(int * dIndex, int index1, int index2) {
   int k = dIndex[index1];
   dIndex[index1] = dIndex[index2];
   dIndex[index2] = k;
@@ -48,7 +53,7 @@ void split(double * array,int * dIndex, int first,int last,int *splitpoint) {
   else
     x=g;
   interchange(&array[x],&array[first]);      // swap the split-point element
-  interchangeIndex(dIndex,x,first);
+  interchange_index(dIndex,x,first);
 
 
 
@@ -63,7 +68,7 @@ void split(double * array,int * dIndex, int first,int last,int *splitpoint) {
       i++;                             // find i
     } while (array[i]<x);
     interchange(&array[i],&array[j]);      // swap
-    interchangeIndex(dIndex,i,j);
+    interchange_index(dIndex,i,j);
 
 
 
@@ -71,10 +76,10 @@ void split(double * array,int * dIndex, int first,int last,int *splitpoint) {
 
 
   interchange(&array[i],&array[j]);          // undo the extra swap
-  interchangeIndex(dIndex,i,j);
+  interchange_index(dIndex,i,j);
 
   interchange(&array[first],&array[j]);      // bring the split-point
-  interchangeIndex(dIndex,first,j);
+  interchange_index(dIndex,first,j);
 
   // element to the first
   *splitpoint=j;

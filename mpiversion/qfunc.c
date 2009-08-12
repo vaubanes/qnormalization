@@ -6,16 +6,17 @@
 ******************************************************************************/
 
 #include "qfunc.h"
+#include <string.h>
+#include <ctype.h>
 
 
-void terror(char *s)
-{
+void terror(char *s) {
   printf(s);
   exit(1);
 }
 
 
-struct params *CommandLine(int argc, char *argv[]) {
+struct params *commandline(int argc, char *argv[]) {
   int i;
   char c;
   struct params *p;
@@ -73,21 +74,11 @@ struct params *CommandLine(int argc, char *argv[]) {
   return p;
 }
 
-/**
-// panic message-----------------
-void terror(char *s)
-{ fprintf(stdout,"\n[ERR**] %s **\n",s); exit(-1); }
-**/
-// warning message---------------
-void Alerta(char *s,char *s1) {
-  fprintf(stdout,"\n[WARNING] %s : %s\n",s,s1);
-}
 
 
 // Load to memory a list of files
 // datafile format: fileName[tab]nGenes[tab][format][newLINE]
-
-struct Files* LoadListOfFiles(struct params *p) {
+struct Files* load_input_files(struct params *p) {
   FILE *f;
   struct Files*L=NULL;
   char line[MAXLIN],lin2[MAXLIN],t;
@@ -114,7 +105,7 @@ struct Files* LoadListOfFiles(struct params *p) {
 
       if (strlen(lin2)>0) {
         L[N].fname=(char*)strdup(lin2);
-        L[N].nG   =g;
+        L[N].num_genes   =g;
         L[N].fType=t;
         N++;
       }
@@ -133,25 +124,25 @@ struct Files* LoadListOfFiles(struct params *p) {
 
 
 // input returns ordered and Index contains the origial position
-int Qnorm1(double *input, int *dIndex, int nG) {
+int qnorm(double *input, int *dindex, int num_genes) {
 
   int j;
 
-  for (j=0; j<nG;j++) dIndex[j]=j; // init the indexes array
+  for (j=0; j<num_genes;j++) dindex[j]=j; // init the indexes array
 
-  QsortC(input,0,nG-1,dIndex); // Quicksort
-  //quicksort(input,dIndex,nG);
+  sort(input,0,num_genes-1,dindex); // Quicksort
+
 
   return 1;
 }
 
-int AccumulateRow(struct Average *AvG, double *input , int nG) {
+int accumulate_row(struct Average *average, double *input , int num_genes) {
   int i;
 
-  for (i=0;i<nG;i++) {
+  for (i=0;i<num_genes;i++) {
 
-    AvG[i].Av+=input[i];
-    AvG[i].num++;
+	average[i].Av+=input[i];
+	average[i].num++;
   }
 
   return 0;
@@ -161,41 +152,43 @@ int AccumulateRow(struct Average *AvG, double *input , int nG) {
 
 
 // Calculate number of blocks
-int calculateBlocks(int nE) {
+int calculate_blocks(int num_experiments) {
 
-  int numBlocks;
-  float numBlocksF = 0;
+  int numblocks;
+  float numblocks_float = 0;
 
 
-  if (BLOCK_SIZE > nE) {
-    numBlocks = 1;
+  if (BLOCK_SIZE > num_experiments) {
+    numblocks = 1;
   } else {
 
-    numBlocksF = (float) nE / (float) BLOCK_SIZE;
+    numblocks_float = (float) num_experiments / (float) BLOCK_SIZE;
   }
 
-  numBlocks = (int) ceil(numBlocksF);
+  //numBlocks = (int) ceil(numBlocksF);
 
-  return numBlocks;
+  numblocks = (int) numblocks_float;
+
+  return numblocks;
 
 }
 
 // Calculate inicital blocks
-int calculateInitialBlocks(int numBlocks, int nProcesors) {
+int calculate_initial_blocks(int numblocks, int num_processors) {
 
-  int nBlocks;
+  int nblocks;
 
-  if (nProcesors  > numBlocks) {
-    nBlocks = numBlocks;
+  if (num_processors  > numblocks) {
+    nblocks = numblocks;
   } else {
-    nBlocks = nProcesors;
+    nblocks = num_processors;
   }
 
 
-  return nBlocks;
+  return nblocks;
 }
 
-int calculateIndexBlocks(int *index,int nE) {
+int calculate_index_blocks(int *index,int num_experiments) {
 
   int index1,index2;
 
@@ -203,8 +196,8 @@ int calculateIndexBlocks(int *index,int nE) {
 
   index2 = index1 + BLOCK_SIZE -1 ;
 
-  if (index2 > (nE -1)) {
-    index2 = nE -1;
+  if (index2 > (num_experiments -1)) {
+    index2 = num_experiments -1;
   }
 
   index[0] = index1;
@@ -217,14 +210,14 @@ int calculateIndexBlocks(int *index,int nE) {
 
 
 
-void QsortC(double *array,int l,int r,int *index) {
+void sort(double *array,int l,int r,int *index) {
   int j;
   if ( l < r ) {
     // divide and conquer
     j = partition( array, l, r,index);
     //  j=(l+r)/2;
-    QsortC( array, l, j-1,index);
-    QsortC( array, j+1, r,index);
+    sort( array, l, j-1,index);
+    sort( array, j+1, r,index);
   }
 
 }
@@ -268,7 +261,7 @@ int partition( double* a, int l, int r, int *indexes) {
 
 // Transpose from Disk to Disk the binary matrix into a tab delimited text file
 
-int TransposeBin2Txt(struct params *p) {
+int transpose_matrix(struct params *p) {
   FILE *f;
   double val, **mat;
   int i,j;
@@ -315,18 +308,18 @@ int TransposeBin2Txt(struct params *p) {
 // =======================================================================
 // Dummy functions : read a datafile (case t: text: one line/one value)
 
-void LoadFile(struct Files*fList, int col, double *dataIn, int nG ) {
+void load_parcial_result(struct Files*flist, int col, double *dataIn, int num_genes ) {
 
   FILE *f;
-  char line[MAXLIN],lin2[MAXLIN],t;
-  int N=0,j,g,i;
+
+  int i;
   double x;
 
 
-  switch (fList[col].fType) {
+  switch (flist[col].fType) {
   case 't':
-    if ((f=fopen(fList[col].fname,"rt"))==NULL) terror("opening input file (LoadFIle function)");
-    for (i=0;i<nG;i++) {
+    if ((f=fopen(flist[col].fname,"rt"))==NULL) terror("opening input file (LoadFIle function)");
+    for (i=0;i<num_genes;i++) {
       fscanf(f,"%lf\n",&x);
       dataIn[i]=x;
     }
@@ -340,7 +333,7 @@ void LoadFile(struct Files*fList, int col, double *dataIn, int nG ) {
 
 
 // DEBUG function for arrays
-void DebugPrint(char *s, double* d, int n) {
+void debug_print(char *s, double* d, int n) {
   int j;
   fprintf(stderr, "%s------------\n",s);
   for (j=0;j<n;j++) fprintf (stderr,"%f ", d[j]);

@@ -8,7 +8,7 @@
 #ifndef QFUNC_H_
 #define QFUNC_H_
 
-#pragma once
+
 
 #include <stdio.h>
 #include <string.h>
@@ -27,7 +27,7 @@
 
 struct Files { // LIst of files
   char *fname;
-  int nG;
+  int num_genes;
   char fType;
 };
 
@@ -50,24 +50,24 @@ struct params {// Parameters struct-----------------
 // Function protorypes------------------------------------------
 
 // general functions
-struct params *CommandLine(int argc, char *argv[]);
-struct Files* LoadListOfFiles(struct params *);
-void LoadFile(struct Files*, int, double *,int nG);
+struct params *commandline(int argc, char *argv[]);
+struct Files* load_input_files(struct params *);
+void load_parcial_result(struct Files*flist, int col, double *dataIn, int num_genes);
 void terror(char *);
-void Alerta(char *,char *);
 
-void DebugPrint(char *, double*, int);
-int  TransposeBin2Txt(struct params*);
-void QsortC(double *array,int l,int r,int *index);
+
+void debug_print(char *, double*, int);
+int  transpose_matrix(struct params*);
+void sort(double *array,int l,int r,int *index);
 int partition( double* a, int l, int r, int *indexes);
 
 // related to Qnorm
-void QNormMain(struct params*, struct Files*);
-int AccumulateRow(struct Average *, double *, int);
-int Qnorm1(double *, int *, int);
-int calculateBlocks(int nE);
-int calculateInitialBlocks(int numBlocks, int nProcesors);
-int calculateIndexBlocks(int *index,int nE);
+
+int accumulate_row(struct Average *average, double *input , int num_genes);
+int qnorm(double *input, int *dindex, int num_genes);
+int calculate_blocks(int nE);
+int calculate_initial_blocks(int numBlocks, int nProcesors);
+int calculate_index_blocks(int *index,int num_experiments);
 
 #endif /* QFUNC_H_ */
 

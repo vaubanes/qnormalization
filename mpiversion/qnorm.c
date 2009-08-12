@@ -35,73 +35,72 @@
 * LAST REVISED: 27/02/09
 ******************************************************************************/
 
-#include "qfunc.h"
+
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include "qsort.h"
 #include "time.h"
+#include "qnorm.h"
+
 
 int main(int ac, char **av) {
 
-  struct Files *fList=NULL;
-  struct params *p=NULL;
-  int myID;
-  int nProcesors;
+  struct Files *flist=NULL;
+  struct params *parameters=NULL;
+  int myid;
+  int num_processors;
 
-  p = CommandLine(ac,av);
+  parameters = commandline(ac,av);
 
   MPI_Init(&ac,&av);
 
-  MPI_Comm_rank(MPI_COMM_WORLD, &myID);
+  MPI_Comm_rank(MPI_COMM_WORLD, &myid);
 
-  MPI_Comm_size(MPI_COMM_WORLD,&nProcesors);
+  MPI_Comm_size(MPI_COMM_WORLD,&num_processors);
 
-  if ((fList=LoadListOfFiles(p))==NULL)
+  if ((flist=load_input_files(parameters))==NULL)
     terror("Loading list of files");
 
-  if (myID == 0) { // Call master
-    master(p,fList,nProcesors-1);
+  if (myid == 0) { // Call master
+    master(parameters,num_processors-1);
   } else { //Call slave
-    slave(p,fList,myID);
+    slave(parameters,flist,myid);
   }
-
 
   return 0;
 }
 
 
 
-// Master
-int master(struct params *p, struct Files* fList,int nProcesors) {
+// Execute in master processor
+int master(struct params *p,int num_processors) {
 
-  int nG=p->nG;
-  int nE=p->nE;
+  int num_genes=p->nG;
+  int num_experiments=p->nE;
   int i;
   int index1, index2;
   int count = 0;
-  int nESend = nE / nProcesors;
   int tbuf;
   char * buf;
   MPI_Status status;
-  struct Average *totalAvG;
-  struct Average *parcialAvG;
+  struct Average *total_avg;
+  struct Average *parcial_avg;
   FILE * fI;
   FILE * fOut;
-  double * dataOut;
-  int numBlocks = 0;
+  double * dataout;
+  int numblocks = 0;
   int limit = 0;
-  int numBlocksSend =0;
-  index1 = 0;
-  index2 = 0;
-  char nameFile[20];
+  int numblocks_send =0;
+  char namefile[20];
   int index[2];
 
+  index1 = 0;
+  index2 = 0;
   // Get number of blocks
-  numBlocks =  calculateBlocks(nE);
+  numblocks =  calculate_blocks(num_experiments);
 
-  limit = calculateInitialBlocks(numBlocks, nProcesors);
+  limit =calculate_initial_blocks(numblocks, num_processors);
 
   index[0] = -1;
   index[1] = -1;
@@ -109,47 +108,46 @@ int master(struct params *p, struct Files* fList,int nProcesors) {
   // Send initials blocks
   for (i = 0; i < limit;i++) {
 
-    calculateIndexBlocks(index,nE);
+	calculate_index_blocks(index,num_experiments);
 
     MPI_Send(index,2,MPI_INT,i+1,1,MPI_COMM_WORLD);
 
-    numBlocksSend++;
+    numblocks_send++;
   }
 
-
-  tbuf = nG * sizeof(struct Average);
+  tbuf = num_genes * sizeof(struct Average);
 
   if ((buf = (char *) malloc(tbuf))==NULL) terror("memory buffer array");
 
-  if ((totalAvG   =(struct Average *)calloc(nG,sizeof(struct Average)))==NULL) terror("memory for Average array");
+  if ((total_avg   =(struct Average *)calloc(num_genes,sizeof(struct Average)))==NULL) terror("memory for Average array");
 
   // Inicialize average array
-  for (i=0; i <nG;i++) {
-    totalAvG[i].Av=0;
-    totalAvG[i].num=0;
+  for (i=0; i <num_genes;i++) {
+    total_avg[i].Av=0;
+    total_avg[i].num=0;
   }
 
 
-  while (count != numBlocks) {
+  while (count != numblocks) {
 
     MPI_Recv(buf,tbuf,MPI_CHAR,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
 
-    parcialAvG = (struct Average *)buf;
+    parcial_avg = (struct Average *)buf;
 
     // Acumulate partial average
-    for (i = 0; i < nG; i++) {
-      totalAvG[i].Av += parcialAvG[i].Av;
-      totalAvG[i].num+= parcialAvG[i].num;
+    for (i = 0; i < num_genes; i++) {
+      total_avg[i].Av += parcial_avg[i].Av;
+      total_avg[i].num+= parcial_avg[i].num;
     }
 
     count++;
 
-    if (numBlocksSend < numBlocks) {
+    if (numblocks_send < numblocks) {
 
-      calculateIndexBlocks(index,nE);
+       calculate_index_blocks(index,num_experiments);
 
       // printf("*** Send blocks index1=%i index2=%i ID=%i \n",index[0],index[1],status.MPI_SOURCE);
-      numBlocksSend++;
+      numblocks_send++;
       MPI_Send(index,2,MPI_INT,status.MPI_SOURCE,1,MPI_COMM_WORLD);
     }
 
@@ -157,46 +155,45 @@ int master(struct params *p, struct Files* fList,int nProcesors) {
 
 
   //Send final signal all nodes
-  for (i=1;i <=nProcesors;i++) {
+  for (i=1;i <=num_processors;i++) {
     index[0]= -1;
     index[1]= -1;
     MPI_Send(index,2,MPI_INT,i,1,MPI_COMM_WORLD);
   }
 
   // Calculate final  average  ----------------------------------------------
-  for (i=0;i<nG;i++) {
-
-    totalAvG[i].Av /=totalAvG[i].num;
+  for (i=0;i<num_genes;i++) {
+    total_avg[i].Av /=total_avg[i].num;
   }
 
 
 
   if ((fOut = fopen(p->fOutName,"wb"))==NULL) terror("opening OUTPUT file");
 
-  if ((dataOut=(double *) calloc(nG,sizeof(double)))==NULL) terror("memory for dataout array");
+  if ((dataout=(double *) calloc(num_genes,sizeof(double)))==NULL) terror("memory for dataout array");
 
-  int dIndex[nG];
-  int j,h, value;
-  char line[1024];
+  int dIndex[num_genes];
+  int j;
+
   char command[1024];
 
-  for (i = 0; i <nE;i++) {
+  for (i = 0; i <num_experiments;i++) {
 
-    sprintf(nameFile,"index%i.tmp",i);
-    if ((fI=fopen(nameFile,"rb"))==NULL) terror("opening Index file");
+    sprintf(namefile,"index%i.tmp",i);
+    if ((fI=fopen(namefile,"rb"))==NULL) terror("opening Index file");
 
     fseek(fI,0,SEEK_SET);
-    fread(dIndex,sizeof(int),nG,fI);
+    fread(dIndex,sizeof(int),num_genes,fI);
     fclose(fI);
     sprintf(command,"rm index%i.tmp",i);
     system(command);
 
-    for (j=0;j<nG;j++) {
-      dataOut[dIndex[j]] = totalAvG[j].Av;
+    for (j=0;j<num_genes;j++) {
+      dataout[dIndex[j]] = total_avg[j].Av;
     }
 
-    fseek(fOut,(long)nG*i*sizeof(double),SEEK_SET);
-    fwrite(dataOut,sizeof(double),nG,fOut);
+    fseek(fOut,(long)num_genes*i*sizeof(double),SEEK_SET);
+    fwrite(dataout,sizeof(double),num_genes,fOut);
 
   }
 
@@ -205,7 +202,7 @@ int master(struct params *p, struct Files* fList,int nProcesors) {
 
   if (p->Traspose) {
 
-    TransposeBin2Txt(p);
+	  transpose_matrix(p);
   }
 
 
@@ -214,19 +211,17 @@ int master(struct params *p, struct Files* fList,int nProcesors) {
 }
 
 
-int slave(struct params *p, struct Files* fList, int myID) {
-
-  double *dataIn, *dataOut;
-  int **mIndex;
+int slave(struct params *p, struct Files* flist, int myid) {
+  double * data_input;
   int *dIndex;
-  struct Average *AvG; // global Average by row
-  int i,j,k;
-  FILE *fI, *fOut;
-  int nG=p->nG;
-  int nE=p->nE;
+  struct Average *average; // global Average by row
+  int i,j;
+
+  int num_genes=p->nG;
+  int num_experiments=p->nE;
   int index1, index2;
-  FILE *tempFile,*indexOut;
-  char nameFile[20];
+  FILE *index_out;
+  char namefile[20];
   int fin = 1;
   MPI_Status status;
   int index[2];
@@ -246,40 +241,40 @@ int slave(struct params *p, struct Files* fList, int myID) {
       fin = 0;
     } else {
 
-      nE = (index2 - index1) + 1;
+      num_experiments = (index2 - index1) + 1;
 
-      if ((dIndex=(int *)calloc(nG,sizeof(int)))==NULL) terror("memory for index2");
+      if ((dIndex=(int *)calloc(num_genes,sizeof(int)))==NULL) terror("memory for index2");
 
-      if ((dataIn=(double *)calloc(nG,sizeof(double)))==NULL) terror("memory for dataIn array");
+      if ((data_input=(double *)calloc(num_genes,sizeof(double)))==NULL) terror("memory for dataIn array");
 
-      if ((AvG   =(struct Average *)calloc(nG,sizeof(struct Average)))==NULL) terror("memory for Average array");
+      if ((average=(struct Average *)calloc(num_genes,sizeof(struct Average)))==NULL) terror("memory for Average array");
 
-      for (j=0; j< nG;j++) { // init Accumulation array
-        AvG[j].Av=0;
-        AvG[j].num=0;
+      for (j=0; j< num_genes;j++) { // init Accumulation array
+        average[j].Av=0;
+        average[j].num=0;
       }
 
 
-      for (i=0; i< nE; i++) { // Qnorm for each datafile: STEP 1
+      for (i=0; i< num_experiments; i++) { // Qnorm for each datafile: STEP 1
 
-        LoadFile(fList, i+index1, dataIn,nG); //Load a file
+        load_parcial_result(flist, i+index1, data_input,num_genes); //Load a file
 
 #ifdef DEBUG
         printf("Show file ");
-        DebugPrint("Load", dataIn, fList[i+index1].nG);
+        debug_print("Load", data_input, flist[i+index1].num_genes);
 #endif
 
-        Qnorm1(dataIn, dIndex, nG); // dataIn returns ordered and Index contains the origial position
+        qnorm(data_input, dIndex, num_genes); // dataIn returns ordered and Index contains the origial position
 
 #ifdef DEBUG
-        DebugPrint("Sorted", dataIn, nG);
+        debug_print("Sorted", data_input, num_genes);
 #endif
 
-        AccumulateRow(AvG, dataIn , nG); // Calulate partial average
+        accumulate_row(average, data_input , num_genes); // Calulate partial average
 
         // Save file index
-        sprintf(nameFile,"index%i.tmp",i+index1);
-        if ((indexOut = fopen(nameFile,"wb"))==NULL) terror("ERROR: Open file");
+        sprintf(namefile,"index%i.tmp",i+index1);
+        if ((index_out = fopen(namefile,"wb"))==NULL) terror("ERROR: Open file");
         /**
         int h = 0;
         for(h=0;h <nG;h++) {
@@ -287,20 +282,20 @@ int slave(struct params *p, struct Files* fList, int myID) {
                      fprintf(indexOut,"%i \n",dIndex[h]);
         }**/
 
-        fseek(indexOut,0,SEEK_SET);
-        fwrite(dIndex,sizeof(int),nG,indexOut);
+        fseek(index_out,0,SEEK_SET);
+        fwrite(dIndex,sizeof(int),num_genes,index_out);
 
       } // End  bucle
 
-      fclose(indexOut);
+      fclose(index_out);
 
 
       char *buf;
 
-      if ((buf = (char *) malloc(sizeof(struct Average)* nG)) == NULL)  terror("ERROR MEMORY: Sending diagonal");
-      buf = (char *) AvG;
+      if ((buf = (char *) malloc(sizeof(struct Average)* num_genes)) == NULL)  terror("ERROR MEMORY: Sending diagonal");
+      buf = (char *) average;
 
-      MPI_Send(buf,sizeof(struct Average)*nG,MPI_BYTE,0,1,MPI_COMM_WORLD);
+      MPI_Send(buf,sizeof(struct Average)*num_genes,MPI_BYTE,0,1,MPI_COMM_WORLD);
 
     }
   }
