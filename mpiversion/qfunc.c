@@ -37,7 +37,11 @@ struct Params *commandline(int argc, char *argv[]) {
 
   for (i=1; i<argc; i++)  {
     if (!strcmp(argv[i],argv[0])) continue;
-    if (argv[i][0] != '-') terror("dash needed at argument (sintx error)");
+    // mpirun switches:
+    if (strncmp("-p4pg",argv[i],6)==0) continue;
+    if (strncmp("-p4wd",argv[i],6)==0) continue;
+    printf("arg=%s\n",argv[i]);
+    if (argv[i][0] != '-') continue;
 
     c = toupper(argv[i][1]);
 
@@ -95,7 +99,7 @@ struct Files* load_input_files(struct Params *p) {
     if (line[0]!='@') {
       j=sscanf(line,"%s\t%d\t%c\n",lin2,&g,&t);
       if (N==p->n_experiments) {
-        fprintf(stderr,"[WARNING] more than %d lines... using firts %d as filenames\n",N,N);
+        fprintf(stderr,"[WARNING] more than %d lines... using first %d as filenames\n",N,N);
         p->n_experiments=N;
         return L;
       }

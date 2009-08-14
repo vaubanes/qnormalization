@@ -53,6 +53,8 @@ int main(int ac, char **av) {
 
   parameters = commandline(ac,av);
 
+  info("Starting MPI");
+
   MPI_Init(&ac,&av);
 
   MPI_Comm_rank(MPI_COMM_WORLD, &myid);

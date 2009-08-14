@@ -8,17 +8,18 @@
 #ifndef QFUNC_H_
 #define QFUNC_H_
 
-
-
-
-
 #define BLOCK_SIZE 2
 #define MAXLIN   500
 #define NGEN     15
 #define NEXP     2
 
+#ifdef DEBUG
+  #define info(s) fprintf(stderr,"INFO: %s\n",s);
+#else
+  #define info(s) 
+#endif
 
-struct Files { // LIst of files
+struct Files { // List of files
   char *fname;
   int num_genes;
   char fType;
