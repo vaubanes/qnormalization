@@ -16,8 +16,6 @@
 #define MAXLIN   500
 #define NGEN     15
 #define NEXP     2
-#define max(a,b)    (((a)>(b)) ? (a):(b))
-#define min(x,y)    (((x) < (y)) ? (x) : (y))
 
 
 struct Files { // LIst of files
