@@ -51,6 +51,7 @@ int main(int ac, char **av) {
   int myid;
   int num_processors;
 
+  chdir("../test/data");
   parameters = commandline(ac,av);
 
   info("Starting MPI");
