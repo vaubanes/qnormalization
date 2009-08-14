@@ -13,7 +13,7 @@
 int top = -1;
 
 
-struct stack *s;
+struct Stack *s;
 
 void interchange(double *x,double *y) {      // swap
   double temp;
@@ -128,7 +128,7 @@ void quicksort(double * array,int * dIndex, int size) {
   int first,last,splitpoint;
   int j;
 
-  s = (struct stack *) calloc(sizeof(struct stack),size);
+  s = (struct Stack *) calloc(sizeof(struct Stack),size);
 
 
   for (j=0;j < size;j++) dIndex[j] = j;

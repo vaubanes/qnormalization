@@ -12,7 +12,7 @@
 
 #define SMALLSIZE       10            // not less than 3
 
-struct stack {                              // stack element.
+struct Stack {                              // stack element.
   int a,b;
 };
 

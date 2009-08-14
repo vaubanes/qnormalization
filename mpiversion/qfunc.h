@@ -10,15 +10,10 @@
 
 
 
-#include <stdio.h>
-#include <string.h>
 
-#include <stdlib.h>
-#include <math.h>
 
 #define BLOCK_SIZE 2
 #define MAXLIN   500
-#define MAXnP    4
 #define NGEN     15
 #define NEXP     2
 #define max(a,b)    (((a)>(b)) ? (a):(b))
@@ -32,42 +27,42 @@ struct Files { // LIst of files
 };
 
 struct Average { // Average array
-  double Av;
+  double av;
   int num;
 };
 
 
-struct params {// Parameters struct-----------------
-  int  nP;                  // number of nodes
-  char fListName[MAXLIN];   // file with a list of files
-  char fOutName[MAXLIN];    // Output file name
-  int  Traspose;            // Traspose file to file final results (0:NOT 1:Yes)
-  int  MemIndex;            // store Index in (1) memory or (0) in disk
-  int  nG;                  // Number of Genes (rows)
-  int  nE;                  // Number of Experiments or samples(cols)
+struct Params {// Parameters struct-----------------
+  int  block_size;                  // Size of block
+  char flist_experiments[MAXLIN];   // file with a list of files
+  char fout[MAXLIN];    			// Output file name
+  int  traspose;            		// Traspose file to file final results (0:NOT 1:Yes)
+  int  n_genes;                  	// Number of Genes (rows)
+  int  n_experiments;               // Number of Experiments or samples(cols)
 };
 
 // Function protorypes------------------------------------------
 
 // general functions
-struct params *commandline(int argc, char *argv[]);
-struct Files* load_input_files(struct params *);
+struct Params *commandline(int argc, char *argv[]);
+struct Files* load_input_files(struct Params *);
 void load_parcial_result(struct Files*flist, int col, double *dataIn, int num_genes);
 void terror(char *);
 
 
 void debug_print(char *, double*, int);
-int  transpose_matrix(struct params*);
-void sort(double *array,int l,int r,int *index);
+int  transpose_matrix(struct Params*);
+void quick_sort(double *array,int l,int r,int *index);
 int partition( double* a, int l, int r, int *indexes);
+
 
 // related to Qnorm
 
 int accumulate_row(struct Average *average, double *input , int num_genes);
 int qnorm(double *input, int *dindex, int num_genes);
-int calculate_blocks(int nE);
+int calculate_blocks(int num_experiments, int block_size);
 int calculate_initial_blocks(int numBlocks, int nProcesors);
-int calculate_index_blocks(int *index,int num_experiments);
+int calculate_index_blocks(int *index,int num_experiments,int block_size);
 
 #endif /* QFUNC_H_ */
 

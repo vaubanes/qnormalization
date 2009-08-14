@@ -10,11 +10,11 @@
 
 
 #include "qfunc.h"
-#include "qsort.h"
+
 
 int main(int ac, char **av);
-int master(struct params *p,int nProcesors);
-int slave(struct params *p, struct Files* fList, int myID);
+int master(struct Params *p,int nProcesors);
+int slave(struct Params *p, struct Files* fList, int myID);
 
 
 

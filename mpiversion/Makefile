@@ -24,4 +24,4 @@ clean:
 	rm -f ${OBJS}
 
 test: mpi_qnorm
-	./mpi_qnorm example_input
+	mpirun -np 4 ./mpi_qnorm -t -e=4 -g=15 -n=2 

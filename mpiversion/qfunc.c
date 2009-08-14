@@ -8,6 +8,10 @@
 #include "qfunc.h"
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 
 
 void terror(char *s) {
@@ -16,20 +20,19 @@ void terror(char *s) {
 }
 
 
-struct params *commandline(int argc, char *argv[]) {
+struct Params *commandline(int argc, char *argv[]) {
   int i;
   char c;
-  struct params *p;
-  p=(struct params*)malloc(sizeof(struct params));
+  struct Params *p;
+  p=(struct Params*)malloc(sizeof(struct Params));
 
   /* default values-------------------------------------*/
-  strcpy(p->fListName,"qInput.txt");
-  strcpy(p->fOutName, "qOut.bin");
-  p->Traspose= 0;
-  p->MemIndex= 1;
-  p->nP      = MAXnP;
-  p->nG      = NGEN;
-  p->nE      = NEXP;
+  strcpy(p->flist_experiments,"qInput.txt");
+  strcpy(p->fout, "qOut.bin");
+  p->traspose		 = 0;
+  p->block_size		 = BLOCK_SIZE;
+  p->n_genes     	 = NGEN;
+  p->n_experiments   = NEXP;
   /*----------------------------------------------------------*/
 
   for (i=1; i<argc; i++)  {
@@ -40,11 +43,7 @@ struct params *commandline(int argc, char *argv[]) {
 
     // On-Off flags----------------
     if (c == 'T') {
-      p->Traspose=1;
-      continue;
-    }
-    if (c == 'D') {
-      p->MemIndex=0;
+      p->traspose=1;
       continue;
     }
 
@@ -53,19 +52,19 @@ struct params *commandline(int argc, char *argv[]) {
 
     switch (c) {
     case 'I':
-      strcpy(p->fListName,&argv[i][3]);
+      strcpy(p->flist_experiments,&argv[i][3]);
       break;
     case 'O':
-      strcpy(p->fOutName, &argv[i][3]);
+      strcpy(p->fout, &argv[i][3]);
       break;
     case 'E':
-      p->nE    = atoi(&argv[i][3]);
+      p->n_experiments    = atoi(&argv[i][3]);
       break;
     case 'G':
-      p->nG    = atof(&argv[i][3]);
+      p->n_genes    = atof(&argv[i][3]);
       break;
     case 'N':
-      p->nP   = atoi(&argv[i][3]);
+      p->block_size   = atoi(&argv[i][3]);
       break;
     default:
       terror("Unknown parameter (see syntax)");
@@ -78,15 +77,15 @@ struct params *commandline(int argc, char *argv[]) {
 
 // Load to memory a list of files
 // datafile format: fileName[tab]nGenes[tab][format][newLINE]
-struct Files* load_input_files(struct params *p) {
+struct Files* load_input_files(struct Params *p) {
   FILE *f;
   struct Files*L=NULL;
   char line[MAXLIN],lin2[MAXLIN],t;
   int N=0,j,g;
 
-  if ((f=fopen(p->fListName,"rt"))==NULL) terror("opening input file");
+  if ((f=fopen(p->flist_experiments,"rt"))==NULL) terror("opening input file");
 
-  if ((L=(struct Files*)calloc(p->nE,sizeof(struct Files)))==NULL)
+  if ((L=(struct Files*)calloc(p->n_experiments,sizeof(struct Files)))==NULL)
     terror("memory for list of files");
 
   fgets(line,MAXLIN,f);
@@ -95,9 +94,9 @@ struct Files* load_input_files(struct params *p) {
 
     if (line[0]!='@') {
       j=sscanf(line,"%s\t%d\t%c\n",lin2,&g,&t);
-      if (N==p->nE) {
+      if (N==p->n_experiments) {
         fprintf(stderr,"[WARNING] more than %d lines... using firts %d as filenames\n",N,N);
-        p->nE=N;
+        p->n_experiments=N;
         return L;
       }
 
@@ -114,9 +113,9 @@ struct Files* load_input_files(struct params *p) {
 
   }
   fclose(f);
-  if (N!=p->nE) {
+  if (N!=p->n_experiments) {
     fprintf(stderr,"[WARNING] only %d files.. nExp=%d\n",N,N);
-    p->nE = N;
+    p->n_experiments = N;
   }
 
   return L;
@@ -130,7 +129,7 @@ int qnorm(double *input, int *dindex, int num_genes) {
 
   for (j=0; j<num_genes;j++) dindex[j]=j; // init the indexes array
 
-  sort(input,0,num_genes-1,dindex); // Quicksort
+  quick_sort(input,0,num_genes-1,dindex); // Quicksort
 
 
   return 1;
@@ -141,8 +140,8 @@ int accumulate_row(struct Average *average, double *input , int num_genes) {
 
   for (i=0;i<num_genes;i++) {
 
-	average[i].Av+=input[i];
-	average[i].num++;
+    average[i].av+=input[i];
+    average[i].num++;
   }
 
   return 0;
@@ -152,22 +151,22 @@ int accumulate_row(struct Average *average, double *input , int num_genes) {
 
 
 // Calculate number of blocks
-int calculate_blocks(int num_experiments) {
+int calculate_blocks(int num_experiments, int block_size) {
 
   int numblocks;
   float numblocks_float = 0;
 
 
-  if (BLOCK_SIZE > num_experiments) {
+  if (block_size > num_experiments) {
     numblocks = 1;
   } else {
 
-    numblocks_float = (float) num_experiments / (float) BLOCK_SIZE;
+    numblocks_float = (float) num_experiments / (float) block_size;
   }
 
-  //numBlocks = (int) ceil(numBlocksF);
+  numblocks = (int) ceil(numblocks_float);
 
-  numblocks = (int) numblocks_float;
+
 
   return numblocks;
 
@@ -175,6 +174,8 @@ int calculate_blocks(int num_experiments) {
 
 // Calculate inicital blocks
 int calculate_initial_blocks(int numblocks, int num_processors) {
+
+
 
   int nblocks;
 
@@ -188,13 +189,16 @@ int calculate_initial_blocks(int numblocks, int num_processors) {
   return nblocks;
 }
 
-int calculate_index_blocks(int *index,int num_experiments) {
+int calculate_index_blocks(int *index,int num_experiments,int block_size) {
+
+
 
   int index1,index2;
 
   index1 = index[1] + 1;
 
-  index2 = index1 + BLOCK_SIZE -1 ;
+  index2 = index1 + block_size -1 ;
+
 
   if (index2 > (num_experiments -1)) {
     index2 = num_experiments -1;
@@ -203,6 +207,8 @@ int calculate_index_blocks(int *index,int num_experiments) {
   index[0] = index1;
   index[1] = index2;
 
+
+
   return 0;
 
 }
@@ -210,17 +216,19 @@ int calculate_index_blocks(int *index,int num_experiments) {
 
 
 
-void sort(double *array,int l,int r,int *index) {
+void quick_sort(double *array,int l,int r,int *index) {
   int j;
   if ( l < r ) {
     // divide and conquer
     j = partition( array, l, r,index);
     //  j=(l+r)/2;
-    sort( array, l, j-1,index);
-    sort( array, j+1, r,index);
+    quick_sort( array, l, j-1,index);
+    quick_sort( array, j+1, r,index);
   }
 
 }
+
+
 
 
 int partition( double* a, int l, int r, int *indexes) {
@@ -261,23 +269,23 @@ int partition( double* a, int l, int r, int *indexes) {
 
 // Transpose from Disk to Disk the binary matrix into a tab delimited text file
 
-int transpose_matrix(struct params *p) {
+int transpose_matrix(struct Params *p) {
   FILE *f;
   double val, **mat;
   int i,j;
-  char NewName[MAXLIN];
-  int nG=p->nG;
-  int nE=p->nE;
+  char newname[MAXLIN];
+  int num_genes=p->n_genes;
+  int num_experiments=p->n_experiments;
 
-  if ((f=fopen(p->fOutName,"rb"))==NULL)
+  if ((f=fopen(p->fout,"rb"))==NULL)
     terror("[Bin2Text] opening binary output file");
 
-  if ((mat=(double **)calloc(nG,sizeof(double*)))==NULL) terror("[Bin2Text] memory for index1");
-  for (i=0; i<nG;i++)
-    if ((mat[i]=(double *)calloc(nE,sizeof(double)))==NULL) terror("[Bin2Text] memory for index2 full matrix");
+  if ((mat=(double **)calloc(num_genes,sizeof(double*)))==NULL) terror("[Bin2Text] memory for index1");
+  for (i=0; i<num_genes;i++)
+    if ((mat[i]=(double *)calloc(num_experiments,sizeof(double)))==NULL) terror("[Bin2Text] memory for index2 full matrix");
 
-  for (i=0; i<nE;i++) {
-    for (j=0; j<nG; j++) {
+  for (i=0; i<num_experiments;i++) {
+    for (j=0; j<num_genes; j++) {
       fread(&val, 1, sizeof(double), f);
       mat[j][i]=val;
     }
@@ -286,13 +294,13 @@ int transpose_matrix(struct params *p) {
 
   // Save trasposed text tabulated
 
-  sprintf(NewName,"%s.txt",p->fOutName);
-  if ((f=fopen(NewName,"wt"))==NULL)
+  sprintf(newname,"%s.txt",p->fout);
+  if ((f=fopen(newname,"wt"))==NULL)
     terror("[Bin2Text] opening tabulated text file out");
 
-  for (i=0; i<nG;i++) {
+  for (i=0; i<num_genes;i++) {
     fprintf(f,"%i\t",i);
-    for (j=0; j<nE; j++) {
+    for (j=0; j<num_experiments; j++) {
       if (j) fprintf(f,"\t");
       fprintf(f,"%lf",mat[i][j]);
     }
