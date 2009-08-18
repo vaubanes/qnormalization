@@ -71,6 +71,7 @@ int main(int ac, char **av) {
     slave(parameters,flist,myid);
   }
 
+  MPI_Finalize();
   return 0;
 }
 
