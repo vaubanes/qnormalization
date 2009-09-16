@@ -46,8 +46,8 @@
 
 int main(int ac, char **av) {
 
-  struct Files *flist=NULL;
-  struct Params *parameters=NULL;
+  Files *flist=NULL;
+  Params *parameters=NULL;
   int myid;
   int num_processors;
 
@@ -74,7 +74,6 @@ int main(int ac, char **av) {
   } else { //Call slave
     slave(parameters,flist,myid);
   }
- 
   printf("Processor ID=%i finish \n",myid);
   MPI_Finalize();
   return 0;
@@ -83,7 +82,7 @@ int main(int ac, char **av) {
 
 
 // Execute in master processor
-int master(struct Params *p,int num_processors) {
+int master(Params *p,int num_processors) {
 
   int num_genes=p->n_genes;
   int num_experiments=p->n_experiments;
@@ -94,8 +93,8 @@ int master(struct Params *p,int num_processors) {
   int tbuf;
   char * buf;
   MPI_Status status;
-  struct Average *total_avg;
-  struct Average *parcial_avg;
+  Average *total_avg;
+  Average *parcial_avg;
   FILE * fI;
   FILE * fOut;
   double * dataout;
@@ -109,8 +108,6 @@ int master(struct Params *p,int num_processors) {
   index2 = 0;
   // Get number of blocks
   numblocks =  calculate_blocks(num_experiments,block_size);
-
-
 
   limit =calculate_initial_blocks(numblocks, num_processors);
 
@@ -129,11 +126,11 @@ int master(struct Params *p,int num_processors) {
 
 
 
-  tbuf = num_genes * sizeof(struct Average);
+  tbuf = num_genes * sizeof(Average);
 
   if ((buf = (char *) malloc(tbuf))==NULL) terror("memory buffer array");
 
-  if ((total_avg   =(struct Average *)calloc(num_genes,sizeof(struct Average)))==NULL) terror("memory for Average array");
+  if ((total_avg   =(Average *)calloc(num_genes,sizeof(Average)))==NULL) terror("memory for Average array");
 
   // Inicialize average array
   for (i=0; i <num_genes;i++) {
@@ -146,7 +143,7 @@ int master(struct Params *p,int num_processors) {
 
     MPI_Recv(buf,tbuf,MPI_CHAR,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
 
-    parcial_avg = (struct Average *)buf;
+    parcial_avg = (Average *)buf;
 
     // Acumulate partial average
     for (i = 0; i < num_genes; i++) {
@@ -164,7 +161,6 @@ int master(struct Params *p,int num_processors) {
     }
 
   }
-
 
   //Send final signal all nodes
   for (i=1;i <=num_processors;i++) {
@@ -214,25 +210,21 @@ int master(struct Params *p,int num_processors) {
 
   fclose(fOut);
 
-
   if (p->traspose) {
 
     transpose_matrix(p);
   }
-
-
-
 
   return 0;
 
 }
 
 
-int slave(struct Params *p, struct Files* flist, int myid) {
+int slave(Params *p, Files* flist, int myid) {
 
   double * data_input;
   int *dIndex;
-  struct Average *average; // global Average by row
+  Average *average; // global Average by row
   int i,j;
 
   int num_genes=p->n_genes;
@@ -255,8 +247,6 @@ int slave(struct Params *p, struct Files* flist, int myid) {
     index1 = index[0];
     index2 = index[1];
 
-
-
     if ((index1 == -1) && (index2 == -1)) { //if value index is -1 mind master send end signal to slave
       fin = 0;
     } else {
@@ -267,7 +257,7 @@ int slave(struct Params *p, struct Files* flist, int myid) {
 
       if ((data_input=(double *)calloc(num_genes,sizeof(double)))==NULL) terror("memory for dataIn array");
 
-      if ((average=(struct Average *)calloc(num_genes,sizeof(struct Average)))==NULL) terror("memory for Average array");
+      if ((average=(Average *)calloc(num_genes,sizeof(Average)))==NULL) terror("memory for Average array");
 
       for (j=0; j< num_genes;j++) { // init Accumulation array
         average[j].av=0;
@@ -304,10 +294,10 @@ int slave(struct Params *p, struct Files* flist, int myid) {
 
       char *buf;
 
-      if ((buf = (char *) malloc(sizeof(struct Average)* num_genes)) == NULL)  terror("ERROR MEMORY: Sending diagonal");
+      if ((buf = (char *) malloc(sizeof(Average)* num_genes)) == NULL)  terror("ERROR MEMORY: Sending diagonal");
       buf = (char *) average;
 
-      MPI_Send(buf,sizeof(struct Average)*num_genes,MPI_BYTE,0,1,MPI_COMM_WORLD);
+      MPI_Send(buf,sizeof(Average)*num_genes,MPI_BYTE,0,1,MPI_COMM_WORLD);
 
     }
 

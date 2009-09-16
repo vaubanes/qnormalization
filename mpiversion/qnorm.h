@@ -13,8 +13,8 @@
 
 
 int main(int ac, char **av);
-int master(struct Params *p,int nProcesors);
-int slave(struct Params *p, struct Files* fList, int myID);
+int master(Params *p,int nProcesors);
+int slave(Params *p, Files* fList, int myID);
 
 
 

@@ -20,11 +20,11 @@ void terror(char *s) {
 }
 
 
-struct Params *commandline(int argc, char *argv[]) {
+Params *commandline(int argc, char *argv[]) {
   int i;
   char c;
-  struct Params *p;
-  p=(struct Params*)malloc(sizeof(struct Params));
+  Params *p;
+  p=(Params*)malloc(sizeof(Params));
 
   /* default values-------------------------------------*/
   strcpy(p->flist_experiments,"qInput.txt");
@@ -81,15 +81,15 @@ struct Params *commandline(int argc, char *argv[]) {
 
 // Load to memory a list of files
 // datafile format: fileName[tab]nGenes[tab][format][newLINE]
-struct Files* load_input_files(struct Params *p) {
+Files* load_input_files(Params *p) {
   FILE *f;
-  struct Files*L=NULL;
+  Files*L=NULL;
   char line[MAXLIN],lin2[MAXLIN],t;
   int N=0,j,g;
 
   if ((f=fopen(p->flist_experiments,"rt"))==NULL) terror("opening input file");
 
-  if ((L=(struct Files*)calloc(p->n_experiments,sizeof(struct Files)))==NULL)
+  if ((L=(Files*)calloc(p->n_experiments,sizeof(Files)))==NULL)
     terror("memory for list of files");
 
   fgets(line,MAXLIN,f);
@@ -139,7 +139,7 @@ int qnorm(double *input, int *dindex, int num_genes) {
   return 1;
 }
 
-int accumulate_row(struct Average *average, double *input , int num_genes) {
+int accumulate_row(Average *average, double *input , int num_genes) {
   int i;
 
   for (i=0;i<num_genes;i++) {
@@ -273,7 +273,7 @@ int partition( double* a, int l, int r, int *indexes) {
 
 // Transpose from Disk to Disk the binary matrix into a tab delimited text file
 
-int transpose_matrix(struct Params *p) {
+int transpose_matrix(Params *p) {
   FILE *f;
   double val, **mat;
   int i,j;
@@ -320,7 +320,7 @@ int transpose_matrix(struct Params *p) {
 // =======================================================================
 // Dummy functions : read a datafile (case t: text: one line/one value)
 
-void load_parcial_result(struct Files*flist, int col, double *dataIn, int num_genes ) {
+void load_parcial_result(Files*flist, int col, double *dataIn, int num_genes ) {
 
   FILE *f;
 

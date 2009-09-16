@@ -12,9 +12,9 @@
 
 #define SMALLSIZE       10            // not less than 3
 
-struct Stack {                              // stack element.
+typedef struct {                              // stack element.
   int a,b;
-};
+}Stack;
 
 
 void interchange(double *x, double *y);
