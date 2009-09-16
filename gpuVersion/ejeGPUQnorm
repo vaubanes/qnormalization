@@ -1,0 +1,5 @@
+# -i    for list of data input files
+# -e    # of experiments or files
+# -g    # of genes or elements in echa file
+
+bin/linux/GPUQnorm5 -i=qIn470.txt -e=470 -g=6553600 
