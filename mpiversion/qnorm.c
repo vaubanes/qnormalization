@@ -62,6 +62,10 @@ int main(int ac, char **av) {
 
   MPI_Comm_size(MPI_COMM_WORLD,&num_processors);
 
+  printf("Processor ID=%i working \n ",myid);
+
+  parameters = commandline(ac,av);
+
   if ((flist=load_input_files(parameters))==NULL)
     terror("Loading list of files");
 
@@ -70,7 +74,8 @@ int main(int ac, char **av) {
   } else { //Call slave
     slave(parameters,flist,myid);
   }
-
+ 
+  printf("Processor ID=%i finish \n",myid);
   MPI_Finalize();
   return 0;
 }
