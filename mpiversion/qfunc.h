@@ -9,39 +9,39 @@
 #define QFUNC_H_
 
 
-#define BLOCK_SIZE 2
-#define MAXLIN   500
-#define NGEN     15
-#define NEXP     2
+#define BLOCK_SIZE 		 		2
+#define MAX_SIZE_LINE   		500
+#define DEFAULT_NUM_GENES       15
+#define DEFAULT_NUM_EXPERIMENTS 2
 
 
-typedef struct  { // LIst of files
-  char *fname;
-  int num_genes;
-  char fType;
-}Files;
+typedef struct { // List of files
+  char *FileName;
+  int NumGenes;
+  char FileType;
+} InfoFile;
 
-typedef struct { // Average array
-  double av;
-  int num;
+typedef struct { // Contains Average of array
+  double Value;
+  int Elements;
 } Average;
 
 typedef struct {
-	int  block_size;                  // Size of block
-	char flist_experiments[MAXLIN];   // file with a list of files
-	char fout[MAXLIN];    			  // Output file name
-	int  traspose;            		  // Traspose file to file final results (0:NOT 1:Yes)
-	int  n_genes;                     // Number of Genes (rows)
-	int  n_experiments;               // Number of Experiments or samples(cols)
+	int  BlockSize;                  	  		// Size of block
+	char FileListExperiments[MAX_SIZE_LINE];    // File with a list of experiments files
+	char FileOut[MAX_SIZE_LINE];    			// Output file name
+	int  Traspose;            		     		// Traspose file to file final results (0:NOT 1:Yes)
+	int  NumGenes;                       		// Number of Genes (rows)
+	int  NumExperiments;                  		// Number of Experiments or samples(cols)
 } Params;
 
 
-// Function protorypes------------------------------------------
+// Function prototypes------------------------------------------
 
 // general functions
 Params *commandline(int argc, char *argv[]);
-Files* load_input_files(Params *);
-void load_parcial_result(Files*flist, int col, double *dataIn, int num_genes);
+InfoFile* load_input_files(Params *);
+void load_parcial_result(InfoFile*flist, int col, double *dataIn, int num_genes);
 void terror(char *);
 
 
