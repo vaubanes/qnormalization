@@ -8,12 +8,16 @@
 #ifndef QFUNC_H_
 #define QFUNC_H_
 
-
 #define BLOCK_SIZE 		 		2
 #define MAX_SIZE_LINE   		500
 #define DEFAULT_NUM_GENES       15
 #define DEFAULT_NUM_EXPERIMENTS 2
 
+#ifdef DEBUG
+  #define info(s) fprintf(stderr,"INFO: %s\n",s);
+#else
+  #define info(s) 
+#endif
 
 typedef struct { // List of files
   char *FileName;
