@@ -57,7 +57,7 @@ int main(int ac, char **av) {
 
   MPI_Comm_size(MPI_COMM_WORLD,&num_processors);
 
-  printf("Processor ID=%i working \n ",myid);
+  printf("Processor ID=%i working Processors=%i \n ",myid,num_processors);
 
   parameters = commandline(ac,av);
 
