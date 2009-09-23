@@ -270,7 +270,7 @@ int slave(Params *p, InfoFile* flist, int myid) {
 
 #ifdef DEBUG
         printf("Show file ");
-        debug_print("Load", data_input, flist[i+index1].num_genes);
+        debug_print("Load", data_input, flist[i+index1].NumGenes);
 #endif
 
         qnorm(data_input, dIndex, num_genes); // data_input returns ordered and Index contains the origial position
