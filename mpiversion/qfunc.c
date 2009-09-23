@@ -96,7 +96,7 @@ InfoFile* load_input_files(Params *p) {
     if (line[0]!='@') {
       j=sscanf(line,"%s\t%d\t%c\n",line2,&g,&t);
       if (N==p->NumExperiments) {
-        fprintf(stderr,"[WARNING] more than %d lines... using firts %d as filenames\n",N,N);
+        fprintf(stderr,"[WARNING] more than %d lines... using first %d as filenames\n",N,N);
         p->NumExperiments=N;
         return info;
       }
