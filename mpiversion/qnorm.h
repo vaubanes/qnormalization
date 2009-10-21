@@ -14,7 +14,7 @@
 
 int main(int ac, char **av);
 int master(Params *p,int nProcesors);
-int slave(Params *p, Files* fList, int myID);
+int slave(Params *p, InfoFile* fList, int myID);
 
 
 

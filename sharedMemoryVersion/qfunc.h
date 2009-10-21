@@ -4,6 +4,11 @@
 * LAST REVISED: 23/02/09
 ******************************************************************************/
 
+
+#ifndef QFUNC_H_
+#define QFUNC_H_
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,8 +50,8 @@ struct params {// Parameters struct-----------------
 // Function protorypes------------------------------------------
 
 // general functions
-struct params *CommandLine(int, char **);
-struct Files* LoadListOfFiles(struct params *);
+struct params *command_line(int, char **);
+struct Files* load_list_files(struct params *);
 void LoadFile(struct Files*, int, float*);
 void terror(char *);
 void Alerta(char *,char *);
@@ -57,10 +62,9 @@ void QsortC(float*array,int l,int r,int *index);
 int partition( float * a, int l, int r, int *indexes);
 
 // related to Qnorm
-void QNormMain(struct params*, struct Files*);
+
 void Q2(struct params*, struct Files*);
-void AccumulateRow(struct Average *, float*, int);
-int Qnorm1(float*, int *, int);
+
 
 char ** LoadprobeID(struct Files*, struct params *);
 
@@ -69,3 +73,5 @@ int Text2Bin(struct params *, char**, struct Files *);
 
 
 // ===============================================================================
+
+#endif

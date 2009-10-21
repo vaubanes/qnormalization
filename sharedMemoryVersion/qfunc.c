@@ -4,13 +4,12 @@
 
 * LAST REVISED: 23/02/09
 ******************************************************************************/
-
-#include "Qfunc.h"
+#include "qfunc.h"
 
 
 // read command line arguments
 
-struct params *CommandLine(int argc, char *argv[])
+struct params *command_line(int argc, char *argv[])
 {
   int i;
   char c;
@@ -69,7 +68,7 @@ void Alerta(char *s,char *s1)
 // Load to memory a list of files
 // datafile format: fileName[tab]nGenes[tab][format][newLINE]
 
-struct Files* LoadListOfFiles(struct params *p) {
+struct Files* load_list_files(struct params *p) {
         FILE *f;
         struct Files*L=NULL;
         char line[MAXLIN],lin2[MAXLIN],t;
@@ -171,27 +170,29 @@ int partition( float* a, int l, int r, int *indexes) {
 
 int TransposeBin2Txt(struct params *p,char**probeID){
 	FILE *f,*f1;
-        float **mat,val;
-	int i,j,k;
-        char NewName[MAXLIN];
-        int nG=p->nG;
-        int nE=p->nE;
-        int BLQ=1000;
-        int From=0,pos;
+    float **mat;
+	int i,j;
+    char NewName[MAXLIN];
+    int nG=p->nG;
+    int nE=p->nE;
+    int BLQ=1000;
+    int From=0,pos;
     
-        if (BLQ>nG) BLQ=nG;
+    if (BLQ>nG) BLQ=nG;
 
-        if ((f=fopen(p->fOutName,"rb"))==NULL)
+    if ((f=fopen(p->fOutName,"rb"))==NULL)
            terror("[Bin2Text] opening binary output file");
 
-        sprintf(NewName,"%s.txt",p->fOutName);
-        if (p->Verbose)fprintf(stderr,"out...%s\n",NewName);
-        if ((f1=fopen(NewName,"wt"))==NULL) 
+    sprintf(NewName,"%s.txt",p->fOutName);
+    if (p->Verbose)fprintf(stderr,"out...%s\n",NewName);
+
+    if ((f1=fopen(NewName,"wt"))==NULL)
            terror("[Bin2Text] opening tabulated text file out");
 
-        if ((mat=(float**)calloc(nE,sizeof(float*)))==NULL)
+    if ((mat=(float**)calloc(nE,sizeof(float*)))==NULL)
             terror("[Bin2Text] memory for index1");
-        for (i=0; i<nE;i++)
+
+    for (i=0; i<nE;i++)
           if((mat[i]=(float*)calloc(BLQ,sizeof(float)))==NULL) 
               terror("[Bin2Text] memory for index2 full matrix");
   
@@ -224,14 +225,15 @@ int TransposeBin2Txt(struct params *p,char**probeID){
 
 // Load a text-tab-2cols file ans store a bin file
 int Text2Bin(struct params *p, char** probeID, struct Files *fList){
-	FILE *f,*f1;
+
+	FILE *f;
 	FILE *f2;
-        float*mat,val;
-	int i,j,k;
-        char NewName[MAXLIN];
-        int nG=p->nG;
-        int nE=p->nE;
-        int From=0,pos;
+    float*mat;
+	int i;
+    char NewName[MAXLIN];
+    int nG=p->nG;
+    int nE=p->nE;
+
     
         // probeID file
         if (p->Verbose)fprintf(stderr,"probesID fileout...%s\n",p->fOutName);
@@ -271,8 +273,8 @@ int Text2Bin(struct params *p, char** probeID, struct Files *fList){
 
 void LoadFile(struct Files*fList, int col, float*dataIn){
         FILE *f;
-        char line[MAXLIN],lin2[MAXLIN],t;
-        int N=0,j,g,i;
+
+        int i;
         char probeID[255];
         float x;
         

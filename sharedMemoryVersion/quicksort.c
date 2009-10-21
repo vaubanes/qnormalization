@@ -7,6 +7,8 @@
 ******************************************************************************/
 #include "quicksort.h"
 
+int top=-1;
+
 void interchange(float *x,float *y)        // swap
 {
     float temp;
@@ -18,7 +20,7 @@ void interchange(float *x,float *y)        // swap
      
 }
 
-int top=-1;
+
 void interchangeIndex(int * dIndex, int index1, int index2) {
      int k = dIndex[index1];
      dIndex[index1] = dIndex[index2];

@@ -46,7 +46,7 @@
 
 int main(int ac, char **av) {
 
-  Files *flist=NULL;
+  InfoFile *flist=NULL;
   Params *parameters=NULL;
   int myid;
   int num_processors;
@@ -61,7 +61,7 @@ int main(int ac, char **av) {
 
   MPI_Comm_size(MPI_COMM_WORLD,&num_processors);
 
-  printf("Processor ID=%i working \n ",myid);
+  printf("Processor ID=%i working Processors=%i \n ",myid,num_processors);
 
   parameters = commandline(ac,av);
 
@@ -83,9 +83,9 @@ int main(int ac, char **av) {
 // Execute in master processor
 int master(Params *p,int num_processors) {
 
-  int num_genes=p->n_genes;
-  int num_experiments=p->n_experiments;
-  int block_size = p->block_size;
+  int const num_genes=p->NumGenes;
+  int const num_experiments=p->NumExperiments;
+  int const block_size = p->BlockSize;
   int i;
   int index1, index2;
   int count = 0;
@@ -133,8 +133,8 @@ int master(Params *p,int num_processors) {
 
   // Inicialize average array
   for (i=0; i <num_genes;i++) {
-    total_avg[i].av=0;
-    total_avg[i].num=0;
+    total_avg[i].Value=0;
+    total_avg[i].Elements=0;
   }
 
 
@@ -146,8 +146,8 @@ int master(Params *p,int num_processors) {
 
     // Acumulate partial average
     for (i = 0; i < num_genes; i++) {
-      total_avg[i].av += parcial_avg[i].av;
-      total_avg[i].num+= parcial_avg[i].num;
+      total_avg[i].Value += parcial_avg[i].Value;
+      total_avg[i].Elements+= parcial_avg[i].Elements;
     }
 
     count++;
@@ -170,12 +170,12 @@ int master(Params *p,int num_processors) {
 
   // Calculate final  average  ----------------------------------------------
   for (i=0;i<num_genes;i++) {
-    total_avg[i].av /=total_avg[i].num;
+    total_avg[i].Value /=total_avg[i].Elements;
   }
 
 
 
-  if ((fOut = fopen(p->fout,"wb"))==NULL) terror("opening OUTPUT file");
+  if ((fOut = fopen(p->FileOut,"wb"))==NULL) terror("opening OUTPUT file");
 
   if ((dataout=(double *) calloc(num_genes,sizeof(double)))==NULL) terror("memory for dataout array");
 
@@ -199,7 +199,7 @@ int master(Params *p,int num_processors) {
 
     for (j=0;j<num_genes;j++) {
 
-      dataout[dIndex[j]] = total_avg[j].av;
+      dataout[dIndex[j]] = total_avg[j].Value;
     }
 
     fseek(fOut,(long)num_genes*i*sizeof(double),SEEK_SET);
@@ -209,7 +209,7 @@ int master(Params *p,int num_processors) {
 
   fclose(fOut);
 
-  if (p->traspose) {
+  if (p->Traspose) {
 
     transpose_matrix(p);
   }
@@ -219,15 +219,15 @@ int master(Params *p,int num_processors) {
 }
 
 
-int slave(Params *p, Files* flist, int myid) {
+int slave(Params *p, InfoFile* flist, int myid) {
 
   double * data_input;
   int *dIndex;
   Average *average; // global Average by row
   int i,j;
 
-  int num_genes=p->n_genes;
-  int num_experiments=p->n_experiments;
+  int num_genes=p->NumGenes;
+  int num_experiments=p->NumExperiments;
   int index1, index2;
   FILE *index_out;
   char namefile[20];
@@ -259,8 +259,8 @@ int slave(Params *p, Files* flist, int myid) {
       if ((average=(Average *)calloc(num_genes,sizeof(Average)))==NULL) terror("memory for Average array");
 
       for (j=0; j< num_genes;j++) { // init Accumulation array
-        average[j].av=0;
-        average[j].num=0;
+        average[j].Value=0;
+        average[j].Elements=0;
       }
 
 
@@ -301,7 +301,6 @@ int slave(Params *p, Files* flist, int myid) {
     }
 
   }
-
 
   return 0;
 
