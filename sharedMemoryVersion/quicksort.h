@@ -16,7 +16,7 @@
 
 
 struct stack {                              // stack element.
-        int a,b;
+  int a,b;
 } * s;
 
 

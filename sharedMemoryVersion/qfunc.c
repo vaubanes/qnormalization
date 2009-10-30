@@ -9,22 +9,21 @@
 
 // read command line arguments
 
-struct params *command_line(int argc, char *argv[])
-{
+struct params *command_line(int argc, char *argv[]) {
   int i;
   char c;
-  struct params *p;
-  p=(struct params*)malloc(sizeof(struct params));
+  struct params *parameters;
+  parameters=(struct params*)malloc(sizeof(struct params));
 
   /* default values-------------------------------------*/
-  strcpy(p->fListName,"qInput.txt");
-  strcpy(p->fOutName, "qOut.bin");
-  p->Traspose= 0;
-  p->MemIndex= 0;
-  p->nP      = MAXnP;
-  p->nG      = NGEN;
-  p->nE      = NEXP;
-  p->Verbose = 0;
+  strcpy(parameters->file_list,"qInput.txt");
+  strcpy(parameters->file_out, "qOut.bin");
+  parameters->traspose				= 0;
+  parameters->mem_index				= 0;
+  parameters->num_processors      	= MAXnP;
+  parameters->num_genes 			= NGEN;
+  parameters->num_experiments		= NEXP;
+  parameters->verbose  				= 0;
 
   /*----------------------------------------------------------*/
 
@@ -35,308 +34,342 @@ struct params *command_line(int argc, char *argv[])
     c = toupper(argv[i][1]);
 
     // On-Off flags----------------
-    if (c == 'T') {p->Traspose =1; continue;}
-    if (c == 'V') {p->Verbose  =1; continue;}
-    if (c == 'M') {p->MemIndex =1; continue;}
+    if (c == 'T') {
+      parameters->traspose =1;
+      continue;
+    }
+    if (c == 'V') {
+      parameters->verbose  =1;
+      continue;
+    }
+    if (c == 'M') {
+      parameters->mem_index=1;
+      continue;
+    }
 
     // -argum=value
     if (argv[i][2]!='=') terror("equal symbol needed at argument (sintx error)");
 
-    switch(c)
-    {
-      case 'I': strcpy(p->fListName,&argv[i][3]);  break;
-      case 'O': strcpy(p->fOutName, &argv[i][3]);  break;
-      case 'E': p->nE    = atoi(&argv[i][3]);      break;
-      case 'G': p->nG    = atof(&argv[i][3]);      break;
-      case 'P': p->nP   = atoi(&argv[i][3]);       break;
-      default: terror("Unknown parameter (see syntax)");
+    switch (c) {
+    case 'I':
+      strcpy(parameters->file_list,&argv[i][3]);
+      break;
+    case 'O':
+      strcpy(parameters->file_out, &argv[i][3]);
+      break;
+    case 'E':
+      parameters->num_experiments		 = atoi(&argv[i][3]);
+      break;
+    case 'G':
+      parameters->num_genes 			 = atof(&argv[i][3]);
+      break;
+    case 'P':
+      parameters->num_processors   	 = atoi(&argv[i][3]);
+      break;
+    default:
+      terror("Unknown parameter (see syntax)");
     }
   }
-  return p;
+  return parameters;
 }
 
 
 // panic message-----------------
-void terror(char *s)
-{ fprintf(stdout,"\n[ERR**] %s **\n",s); exit(-1); }
+void terror(char *s) {
+  fprintf(stdout,"\n[ERR**] %s **\n",s);
+  exit(-1);
+}
 
 // warning message---------------
-void Alerta(char *s,char *s1)
-{ fprintf(stdout,"\n[WARNING] %s : %s\n",s,s1); }
-  
+void alerta(char *s,char *s1) {
+  fprintf(stdout,"\n[WARNING] %s : %s\n",s,s1);
+}
+
 
 // Load to memory a list of files
 // datafile format: fileName[tab]nGenes[tab][format][newLINE]
 
-struct Files* load_list_files(struct params *p) {
-        FILE *f;
-        struct Files*L=NULL;
-        char line[MAXLIN],lin2[MAXLIN],t;
-        int N=0,j,g;
+struct files* load_list_files(struct params *parameters) {
+  FILE *file_list;
+  struct files*list_of_files=NULL;
+  char line[MAXLIN],lin2[MAXLIN],t;
+  int N=0,j,g;
 
-        if ((f=fopen(p->fListName,"rt"))==NULL) terror("opening input file");
+  if ((file_list=fopen(parameters->file_list,"rt"))==NULL) terror("opening input file");
 
-	if ((L=(struct Files*)calloc(p->nE,sizeof(struct Files)))==NULL) 
-           terror("memory for list of files");
+  if ((list_of_files=(struct files*)calloc(parameters->num_experiments,sizeof(struct files)))==NULL)
+    terror("memory for list of files");
 
-        fgets(line,MAXLIN,f);
-        while(!feof(f)) {
+  fgets(line,MAXLIN,file_list);
+  while (!feof(file_list)) {
 
-           if (line[0]!='@') {
+    if (line[0]!='@') {
 
-             j=sscanf(line,"%s\t%d\t%c\n",lin2,&g,&t);         
-             if (N==p->nE) {
-                if (p->Verbose) 
-                   fprintf(stderr,"[WARNING] more than %d lines in file LIST... using first %d as Experiments\n",N,N);
-                p->nE=N;
-                return L;
-             }
-         
-             if (lin2[strlen(lin2)-1]=='\t'||lin2[strlen(lin2)-1]==' ') lin2[strlen(lin2)-1]=0;
+      j=sscanf(line,"%s\t%d\t%c\n",lin2,&g,&t);
+      if (N==parameters->num_experiments) {
+        if (parameters->verbose)
+          fprintf(stderr,"[WARNING] more than %d lines in file LIST... using first %d as Experiments\n",N,N);
+        parameters->num_experiments=N;
+        return list_of_files;
+      }
 
-             if (strlen(lin2)>0) {
-               L[N].fname=(char*)strdup(lin2);
-               L[N].nG   =g;
-               L[N].fType=t;
-               L[N].pos=N;
-               if (g > p->nG) {
-                  if (p->Verbose)
-                    Alerta("more genes in file than in parameter, work with min value",L[N].fname);
-                  L[N].nG   =p->nG;
-               }
-               if (g < p->nG) {
-                  if (p->Verbose)
-                    Alerta("more genes in parametern than in file, work with min value",L[N].fname);
-                  p->nG = L[N].nG;
-               }
+      if (lin2[strlen(lin2)-1]=='\t'||lin2[strlen(lin2)-1]==' ') lin2[strlen(lin2)-1]=0;
 
-               N++;
-             }
-           }
-           fgets(line,MAXLIN,f);
+      if (strlen(lin2)>0) {
+        list_of_files[N].fname=(char*)strdup(lin2);
+        list_of_files[N].num_genes   =g;
+        list_of_files[N].fType=t;
+        list_of_files[N].pos=N;
+        if (g > parameters->num_genes) {
+          if (parameters->verbose)
+            alerta("more genes in file than in parameter, work with min value",list_of_files[N].fname);
+          list_of_files[N].num_genes   =parameters->num_genes;
+        }
+        if (g < parameters->num_genes) {
+          if (parameters->verbose)
+            alerta("more genes in parametern than in file, work with min value",list_of_files[N].fname);
+          parameters->num_genes = list_of_files[N].num_genes;
+        }
 
-       }
-       fclose(f);
-       if (N!=p->nE) {
-           if (p->Verbose) fprintf(stderr,"[WARNING] only %d files.. nExp=%d\n",N,N);
-           p->nE = N;
-         }
+        N++;
+      }
+    }
+    fgets(line,MAXLIN,file_list);
 
-       return L;
+  }
+  fclose(file_list);
+  if (N!=parameters->num_experiments) {
+    if (parameters->verbose) fprintf(stderr,"[WARNING] only %d files.. nExp=%d\n",N,N);
+    parameters->num_experiments = N;
+  }
+
+  return list_of_files;
 }
 
- 
+
 
 // recursive Qsort--------------------------------(not used)
-void QsortC(float *array,int l,int r,int *index)
-{
-   int j;
-   if( l < r ) {
- 	// divide and conquer
-       j = partition( array, l, r,index);
-       //  j=(l+r)/2;
-       QsortC( array, l, j-1,index);
-       QsortC( array, j+1, r,index);
-   }
-	
+void qsort_c(float *array,int l,int r,int *index) {
+  int j;
+  if ( l < r ) {
+    // divide and conquer
+    j = partition( array, l, r,index);
+    //  j=(l+r)/2;
+    qsort_c( array, l, j-1,index);
+    qsort_c( array, j+1, r,index);
+  }
+
 }
 
 
 int partition( float* a, int l, int r, int *indexes) {
-   int i=l;
-   int j=r+1;
-   int k;
-   float t,pivot;
-   pivot = a[l];
-   //i = l; 
-   //j = r+1;
-		
-   while( 1) {
-     do{ ++i; 
-      }while( a[i] <= pivot && i <= r );
-     do{ --j; 
-      }while( a[j] > pivot );
-     if( i >= j ) break;
-     t = a[i]; a[i] = a[j]; a[j] = t;
-     k=indexes[i];indexes[i]=indexes[j];indexes[j]=k;
-   }
-   t = a[l]; a[l] = a[j]; a[j] = t;
-   k=indexes[l];indexes[l]=indexes[j];indexes[j]=k;
-   return j;
+  int i=l;
+  int j=r+1;
+  int k;
+  float t,pivot;
+  pivot = a[l];
+  //i = l;
+  //j = r+1;
+
+  while ( 1) {
+    do {
+      ++i;
+    } while ( a[i] <= pivot && i <= r );
+    do {
+      --j;
+    } while ( a[j] > pivot );
+    if ( i >= j ) break;
+    t = a[i];
+    a[i] = a[j];
+    a[j] = t;
+    k=indexes[i];
+    indexes[i]=indexes[j];
+    indexes[j]=k;
+  }
+  t = a[l];
+  a[l] = a[j];
+  a[j] = t;
+  k=indexes[l];
+  indexes[l]=indexes[j];
+  indexes[j]=k;
+  return j;
 }
 
 
 // Transpose from Disk to Disk the binary matrix into a tab delimited text file
 
-int TransposeBin2Txt(struct params *p,char**probeID){
-	FILE *f,*f1;
-    float **mat;
-	int i,j;
-    char NewName[MAXLIN];
-    int nG=p->nG;
-    int nE=p->nE;
-    int BLQ=1000;
-    int From=0,pos;
-    
-    if (BLQ>nG) BLQ=nG;
+int transpose_bin_txt(struct params *parameters,char**probe_id) {
+  FILE *f,*f1;
+  float **mat;
+  int i,j;
+  char new_name[MAXLIN];
+  int num_gen=parameters->num_genes;
+  int num_experiment=parameters->num_experiments;
+  int blq=1000;
+  int from=0,pos;
 
-    if ((f=fopen(p->fOutName,"rb"))==NULL)
-           terror("[Bin2Text] opening binary output file");
+  if (blq>num_gen) blq=num_gen;
 
-    sprintf(NewName,"%s.txt",p->fOutName);
-    if (p->Verbose)fprintf(stderr,"out...%s\n",NewName);
+  if ((f=fopen(parameters->file_out,"rb"))==NULL)
+    terror("[Bin2Text] opening binary output file");
 
-    if ((f1=fopen(NewName,"wt"))==NULL)
-           terror("[Bin2Text] opening tabulated text file out");
+  sprintf(new_name,"%s.txt",parameters->file_out);
+  if (parameters->verbose)fprintf(stderr,"out...%s\n",new_name);
 
-    if ((mat=(float**)calloc(nE,sizeof(float*)))==NULL)
-            terror("[Bin2Text] memory for index1");
+  if ((f1=fopen(new_name,"wt"))==NULL)
+    terror("[Bin2Text] opening tabulated text file out");
 
-    for (i=0; i<nE;i++)
-          if((mat[i]=(float*)calloc(BLQ,sizeof(float)))==NULL) 
-              terror("[Bin2Text] memory for index2 full matrix");
-  
-        while (From<=nG) { 
-          if (p->Verbose) fprintf(stderr,"Blq=%d of %d\n",From,nG);
-	  for (i=0; i<nE;i++){ // read a BLQ of genes from each Exp
-             pos=(i*nG+From)*sizeof(float);
-             fseek(f, pos, SEEK_SET); 
-             fread(mat[i], BLQ, sizeof(float), f);
-          }
+  if ((mat=(float**)calloc(num_experiment,sizeof(float*)))==NULL)
+    terror("[Bin2Text] memory for index1");
 
-          // Save a BLQ trasposed text tabulated
+  for (i=0; i<num_experiment;i++)
+    if ((mat[i]=(float*)calloc(blq,sizeof(float)))==NULL)
+      terror("[Bin2Text] memory for index2 full matrix");
 
-	  for (i=0; i<BLQ&&From+i<nG;i++){
-             fprintf(f1,"%s",probeID[From+i]);
-	     for (j=0; j<nE; j++)
-                  fprintf(f1,"\t%lf",mat[j][i]);
-             fprintf(f1,"\n");
-           }
-           From+=BLQ;
-        }
-	
-        fclose(f);
-        fclose(f1);
-	
-	return 1;
+  while (from<=num_gen) {
+    if (parameters->verbose) fprintf(stderr,"Blq=%d of %d\n",from,num_gen);
+    for (i=0; i<num_experiment;i++) { // read a BLQ of genes from each Exp
+      pos=(i*num_gen+from)*sizeof(float);
+      fseek(f, pos, SEEK_SET);
+      fread(mat[i], blq, sizeof(float), f);
+    }
+
+    // Save a BLQ trasposed text tabulated
+
+    for (i=0; i<blq&&from+i<num_gen;i++) {
+      fprintf(f1,"%s",probe_id[from+i]);
+      for (j=0; j<num_experiment; j++)
+        fprintf(f1,"\t%lf",mat[j][i]);
+      fprintf(f1,"\n");
+    }
+    from+=blq;
+  }
+
+  fclose(f);
+  fclose(f1);
+
+  return 1;
 }
 
 
 
 // Load a text-tab-2cols file ans store a bin file
-int Text2Bin(struct params *p, char** probeID, struct Files *fList){
+int text_to_bin(struct params *parameters, char** probe_id, struct files *file_list) {
 
-	FILE *f;
-	FILE *f2;
-    float*mat;
-	int i;
-    char NewName[MAXLIN];
-    int nG=p->nG;
-    int nE=p->nE;
+  FILE *f;
+  FILE *f2;
+  float*mat;
+  int i;
+  char new_name[MAXLIN];
+  int num_gene=parameters->num_genes;
+  int num_experiment=parameters->num_experiments;
 
-    
-        // probeID file
-        if (p->Verbose)fprintf(stderr,"probesID fileout...%s\n",p->fOutName);
-        if ((f=fopen(p->fOutName,"wt"))==NULL)
-           terror("[Bin2Text] opening probeID file");
-        for (i=0;i<nG; i++) fprintf(f,"%s\n",probeID[i]); 
-        fclose(f);
 
-        if ((mat=(float *)calloc(nG,sizeof(float)))==NULL)
-            terror("[Txt2Bin] memory for probeID array");
-        if ((f2=fopen("qInBIN.txt","wt"))==NULL) 
-           terror("[Text2Bin] opening qInBIN file");
+  // probeID file
+  if (parameters->verbose)fprintf(stderr,"probesID fileout...%s\n",parameters->file_out);
+  if ((f=fopen(parameters->file_out,"wt"))==NULL)
+    terror("[Bin2Text] opening probeID file");
+  for (i=0;i<num_gene; i++) fprintf(f,"%s\n",probe_id[i]);
+  fclose(f);
 
-        if (p->Verbose) fprintf(stderr,"kickoff..%d files.\n",nE);
-        for (i=0; i< nE; i++) { // Qnorm for each datafile: STEP 1
-          LoadFile(fList, i, mat);
+  if ((mat=(float *)calloc(num_gene,sizeof(float)))==NULL)
+    terror("[Txt2Bin] memory for probeID array");
+  if ((f2=fopen("qInBIN.txt","wt"))==NULL)
+    terror("[Text2Bin] opening qInBIN file");
 
-          if (p->Verbose) fprintf(stderr,"%4d file: %s\n",i, fList[i].fname); 
+  if (parameters->verbose) fprintf(stderr,"kickoff..%d files.\n",num_experiment);
+  for (i=0; i< num_experiment; i++) { // Qnorm for each datafile: STEP 1
+    load_file(file_list, i, mat);
+
+    if (parameters->verbose) fprintf(stderr,"%4d file: %s\n",i, file_list[i].fname);
 
 //          sprintf(NewName,"%s.bin",fList[i].fname);
-        fList[i].fname[24]=0;
-        sprintf(NewName,"../files/bin/%s.bin",&fList[i].fname[15]);
-        fprintf(f2,"%s\t6553600\tb\n",NewName); fflush(f2);
-          if ((f=fopen(NewName,"wb"))==NULL) 
-           terror("[Bin2Text] opening bin file");
-          fwrite(mat, sizeof(float), nG, f);
-          fclose(f);
-   }
-      free(mat);
-      fclose(f2);	
-	return 1;
+    file_list[i].fname[24]=0;
+    sprintf(new_name,"../files/bin/%s.bin",&file_list[i].fname[15]);
+    fprintf(f2,"%s\t6553600\tb\n",new_name);
+    fflush(f2);
+    if ((f=fopen(new_name,"wb"))==NULL)
+      terror("[Bin2Text] opening bin file");
+    fwrite(mat, sizeof(float), num_gene, f);
+    fclose(f);
+  }
+  free(mat);
+  fclose(f2);
+  return 1;
 }
 
 
 // =======================================================================
 // Dummy functions : read a datafile (case t: text: one line/one value)
 
-void LoadFile(struct Files*fList, int col, float*dataIn){
-        FILE *f;
+void load_file(struct files*file_list, int col, float*data_in) {
+  FILE *file_loaded;
 
-        int i;
-        char probeID[255];
-        float x;
-        
-        switch(fList[col].fType){
-           case 't':
-                     if ((f=fopen(fList[col].fname,"rt"))==NULL) {
-                        fprintf(stderr,"file:%s\n",fList[col].fname);
-                        terror("opening input file (LoadFIle function)");
-                     }
-                     for (i=0;i<fList[col].nG;i++) {
-                       fscanf(f,"%s\t%f\n",probeID,&x);
-                       dataIn[i]=x;
-                     }
-                     fclose(f);
-                     break;
-           case 'b':
-                     if ((f=fopen(fList[col].fname,"rb"))==NULL) {
-                        fprintf(stderr,"file:%s\n",fList[col].fname);
-                        terror("opening input file (LoadFIle function)");
-                     }
-                     fread(dataIn, fList[col].nG, sizeof(float), f);
-                     fclose(f);
-                     break;
-           default : terror("unknow (LoadFile) type of file");
-        }
+  int i;
+  char probe_id[255];
+  float x;
+
+  switch (file_list[col].fType) {
+  case 't':
+    if ((file_loaded=fopen(file_list[col].fname,"rt"))==NULL) {
+      fprintf(stderr,"file:%s\n",file_list[col].fname);
+      terror("opening input file (LoadFIle function)");
+    }
+    for (i=0;i<file_list[col].num_genes;i++) {
+      fscanf(file_loaded,"%s\t%f\n",probe_id,&x);
+      data_in[i]=x;
+    }
+    fclose(file_loaded);
+    break;
+  case 'b':
+    if ((file_loaded=fopen(file_list[col].fname,"rb"))==NULL) {
+      fprintf(stderr,"file:%s\n",file_list[col].fname);
+      terror("opening input file (LoadFIle function)");
+    }
+    fread(data_in, file_list[col].num_genes, sizeof(float), file_loaded);
+    fclose(file_loaded);
+    break;
+  default :
+    terror("unknow (LoadFile) type of file");
+  }
 
 }
 
-char ** LoadprobeID(struct Files* fList, struct params *p){
-        FILE *f;
-        int i;
-        char probeID[255],**probe;
-        int col=0;
-        float x;
+char ** load_probe_id(struct files* file_list, struct params *parameters) {
+  FILE *f;
+  int i;
+  char probe_id[255],**probe;
+  int col=0;
+  float x;
 
-        if ((probe=(char **)calloc(p->nG,sizeof(char*)))==NULL) 
-           terror("[Bin2Text] memory for probes");
-        switch(fList[col].fType){
-           case 't':
-                     if ((f=fopen(fList[col].fname,"rt"))==NULL) {
-                        fprintf(stderr,"file:%s\n",fList[col].fname);
-                        terror("opening input file (LoadFIle function)");
-                     }
-                     for (i=0;i<fList[col].nG;i++) {
-                       fscanf(f,"%s\t%f\n",probeID,&x);
-                       probe[i]=strdup(probeID);
-                     }
-                     fclose(f);
-                     break;
-           default : terror("unknow (loadProbeID) type of file");
-        }
-       return probe;
+  if ((probe=(char **)calloc(parameters->num_genes,sizeof(char*)))==NULL)
+    terror("[Bin2Text] memory for probes");
+  switch (file_list[col].fType) {
+  case 't':
+    if ((f=fopen(file_list[col].fname,"rt"))==NULL) {
+      fprintf(stderr,"file:%s\n",file_list[col].fname);
+      terror("opening input file (LoadFIle function)");
+    }
+    for (i=0;i<file_list[col].num_genes;i++) {
+      fscanf(f,"%s\t%f\n",probe_id,&x);
+      probe[i]=strdup(probe_id);
+    }
+    fclose(f);
+    break;
+  default :
+    terror("unknow (loadProbeID) type of file");
+  }
+  return probe;
 
 }
 
 
 // DEBUG function for arrays
-void DebugPrint(char *s, int tid,float* d, int n){
-     int j;
-     fprintf(stderr, "%s----[tid=%d]--------\n",s,tid);
-     for (j=0;j<n;j++) fprintf (stderr,"%f ", d[j]); 
-     fprintf(stderr,"\n");
+void debug_print(char *s, int tid,float* d, int n) {
+  int j;
+  fprintf(stderr, "%s----[tid=%d]--------\n",s,tid);
+  for (j=0;j<n;j++) fprintf (stderr,"%f ", d[j]);
+  fprintf(stderr,"\n");
 }
 
 

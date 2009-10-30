@@ -23,53 +23,53 @@
 #define min(x,y)    (((x) < (y)) ? (x) : (y))
 
 
-struct Files { // LIst of files
-   char *fname;
-   int nG;
-   char fType;
-   int pos;
+struct files { // LIst of files
+  char *fname;
+  int num_genes;
+  char fType;
+  int pos;
 };
 
-struct Average { // Average array
-   float Av;
-   int num;
+struct average { // Average array
+  float average;
+  int num;
 };
 
 
 struct params {// Parameters struct-----------------
-  int  nP;                  // number of nodes
-  char fListName[MAXLIN];   // file with a list of files
-  char fOutName[MAXLIN];    // Output file name
-  int  Traspose;            // Traspose file to file final results (0:NOT 1:Yes)
-  int  MemIndex;            // store Index in (1) memory or (0) in disk
-  int  nG;                  // Number of Genes (rows)
-  int  nE;                  // Number of Experiments or samples(cols)
-  int  Verbose;             // Not(0) (default) / yes (1)
+  int  num_processors;      // number of nodes
+  char file_list[MAXLIN];   // file with a list of files
+  char file_out[MAXLIN];    // Output file name
+  int  traspose;            // Traspose file to file final results (0:NOT 1:Yes)
+  int  mem_index;           // store Index in (1) memory or (0) in disk
+  int  num_genes;           // Number of Genes (rows)
+  int  num_experiments;     // Number of Experiments or samples(cols)
+  int  verbose;             // Not(0) (default) / yes (1)
 };
 
 // Function protorypes------------------------------------------
 
 // general functions
 struct params *command_line(int, char **);
-struct Files* load_list_files(struct params *);
-void LoadFile(struct Files*, int, float*);
+struct files* load_list_files(struct params *);
+void load_file(struct files*, int, float*);
 void terror(char *);
-void Alerta(char *,char *);
+void alerta(char *,char *);
 
-void DebugPrint(char *, int, float*, int); 
-int  TransposeBin2Txt(struct params*, char**);
-void QsortC(float*array,int l,int r,int *index);
+void debug_print(char *, int, float*, int);
+int  transpose_bin_txt(struct params*, char**);
+void qsort_c(float*array,int l,int r,int *index);
 int partition( float * a, int l, int r, int *indexes);
 
 // related to Qnorm
 
-void Q2(struct params*, struct Files*);
+void qnorm_b(struct params*, struct files*);
 
 
-char ** LoadprobeID(struct Files*, struct params *);
+char ** load_probe_id(struct files*, struct params *);
 
 // Load a text-tab-2cols file ans store a bin file
-int Text2Bin(struct params *, char**, struct Files *);
+int text_to_bin(struct params *, char**, struct files *);
 
 
 // ===============================================================================

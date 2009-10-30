@@ -1,8 +1,8 @@
 /*
  * qnorm_a.h
  *
- *  Created on: 16/10/2009
- *      Author: bitlab
+ *  Created on: 23/02/2009
+ *      Author: ots
  */
 
 #ifndef QNORM_A_H_
@@ -12,9 +12,9 @@
 #include "quicksort.h"
 
 int main(int ac, char **av);
-void qnorm_main(struct params *p, struct Files* fList);
+void qnorm_main(struct params *parameters, struct files* file_list);
 int qnorm_sort(float*input, int *dIndex, int nG);
-void accumulate_row(struct Average *AvG, float*input , int nG);
+void accumulate_row(struct average *average, float*input , int num_genes);
 
 
 
