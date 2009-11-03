@@ -51,6 +51,10 @@ int main(int ac, char **av) {
   int myid;
   int num_processors;
 
+  // chdir("../test/data");
+
+  info("Starting MPI");
+
   MPI_Init(&ac,&av);
 
   MPI_Comm_rank(MPI_COMM_WORLD, &myid);
@@ -69,7 +73,6 @@ int main(int ac, char **av) {
   } else { //Call slave
     slave(parameters,flist,myid);
   }
-
   printf("Processor ID=%i finish \n",myid);
   MPI_Finalize();
   return 0;
@@ -267,7 +270,7 @@ int slave(Params *p, InfoFile* flist, int myid) {
 
 #ifdef DEBUG
         printf("Show file ");
-        debug_print("Load", data_input, flist[i+index1].num_genes);
+        debug_print("Load", data_input, flist[i+index1].NumGenes);
 #endif
 
         qnorm(data_input, dIndex, num_genes); // data_input returns ordered and Index contains the origial position

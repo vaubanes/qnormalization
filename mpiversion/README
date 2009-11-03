@@ -2,9 +2,10 @@ This is the openmpi version of Qnorm.
 
 You need the openmpi package, e.g. on Debian:
 
-  apt-get install openmpi-dev
+  apt-get install openmpi-dev mpich-bin lam-runtime
 
 compile with
 
   make all
+	make test
 

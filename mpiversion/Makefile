@@ -1,5 +1,5 @@
 CC = mpicc 
-CFLAGS = -Wall -c
+CFLAGS = -Wall -c -DDEBUG
 LFLAGS = -lm
 
 OBJS = qnorm.o qfunc.o qsort.o
@@ -24,4 +24,6 @@ clean:
 	rm -f ${OBJS}
 
 test: mpi_qnorm
+	lamboot hostnames
 	mpirun -np 4 ./mpi_qnorm -t -e=4 -g=15 -n=2 
+
