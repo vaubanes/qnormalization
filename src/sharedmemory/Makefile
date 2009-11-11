@@ -23,7 +23,8 @@ clean:
 	rm -f ${OBJS}
 
 test: shared_qnorm
-	./shared_qnorm -i=qInBIN.txt -e=4 -g=80 -o=qOutBin.bin -P=1
+	cd ../../test/data ; ls ; ../../src/sharedmemory/shared_qnorm -i=qInBIN.txt -e=4 -g=80 -o=qOutBin.bin -P=1
+	true
 
   
 
