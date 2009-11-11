@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -c  
+CFLAGS = -Wall -c -fopenmp
 PFLAGS = -lgomp
 OBJS = qnorm_a.o qfunc.o quicksort.o
 
