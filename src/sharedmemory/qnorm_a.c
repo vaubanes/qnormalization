@@ -79,7 +79,7 @@ int main(int ac, char **av) {
   parameters->mem_index=0; // working in disk
   qnorm_main(parameters,file_list);
 
-  return 1;
+  return 0;
 }
 
 
