@@ -15,10 +15,10 @@
 #include <ctype.h>
 #include <math.h>
 
-#define MAXLIN   1000
-#define MAXnP    4
-#define NGEN     15
-#define NEXP     2
+#define MAX_SIZE_LINE   1000
+#define DEFAULT_PROCESSOR_NUMBER    4
+#define DEFAULT_NUM_GENES     15
+#define DEFAULT_NUM_EXPERIMENTS     2
 #define max(a,b)    (((a)>(b)) ? (a):(b))
 #define min(x,y)    (((x) < (y)) ? (x) : (y))
 
@@ -38,9 +38,9 @@ struct average { // Average array
 
 struct params {// Parameters struct-----------------
   int  num_processors;      // number of nodes
-  char file_list[MAXLIN];   // file with a list of files
-  char file_out[MAXLIN];    // Output file name
-  int  traspose;            // Traspose file to file final results (0:NOT 1:Yes)
+  char file_list[MAX_SIZE_LINE];   // file with a list of files
+  char file_out[MAX_SIZE_LINE];    // Output file name
+  int  transpose;            // Traspose file to file final results (0:NOT 1:Yes)
   int  mem_index;           // store Index in (1) memory or (0) in disk
   int  num_genes;           // Number of Genes (rows)
   int  num_experiments;     // Number of Experiments or samples(cols)
@@ -54,7 +54,7 @@ struct params *command_line(int, char **);
 struct files* load_list_files(struct params *);
 void load_file(struct files*, int, float*);
 void terror(char *);
-void alerta(char *,char *);
+void alert(char *,char *);
 
 void debug_print(char *, int, float*, int);
 int  transpose_bin_txt(struct params*, char**);

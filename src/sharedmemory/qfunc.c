@@ -18,11 +18,11 @@ struct params *command_line(int argc, char *argv[]) {
   /* default values-------------------------------------*/
   strcpy(parameters->file_list,"qInput.txt");
   strcpy(parameters->file_out, "qOut.bin");
-  parameters->traspose				= 0;
+  parameters->transpose				= 0;
   parameters->mem_index				= 0;
-  parameters->num_processors      	= MAXnP;
-  parameters->num_genes 			= NGEN;
-  parameters->num_experiments		= NEXP;
+  parameters->num_processors      	= DEFAULT_PROCESSOR_NUMBER;
+  parameters->num_genes 			= DEFAULT_NUM_GENES;
+  parameters->num_experiments		= DEFAULT_NUM_EXPERIMENTS;
   parameters->verbose  				= 0;
 
   /*----------------------------------------------------------*/
@@ -35,7 +35,7 @@ struct params *command_line(int argc, char *argv[]) {
 
     // On-Off flags----------------
     if (c == 'T') {
-      parameters->traspose =1;
+      parameters->transpose =1;
       continue;
     }
     if (c == 'V') {
@@ -81,7 +81,7 @@ void terror(char *s) {
 }
 
 // warning message---------------
-void alerta(char *s,char *s1) {
+void alert(char *s,char *s1) {
   fprintf(stdout,"\n[WARNING] %s : %s\n",s,s1);
 }
 
@@ -92,7 +92,7 @@ void alerta(char *s,char *s1) {
 struct files* load_list_files(struct params *parameters) {
   FILE *file_list;
   struct files*list_of_files=NULL;
-  char line[MAXLIN],lin2[MAXLIN],t;
+  char line[MAX_SIZE_LINE],lin2[MAX_SIZE_LINE],t;
   int N=0,j,g;
 
   if ((file_list=fopen(parameters->file_list,"rt"))==NULL) terror("opening input file");
@@ -100,7 +100,7 @@ struct files* load_list_files(struct params *parameters) {
   if ((list_of_files=(struct files*)calloc(parameters->num_experiments,sizeof(struct files)))==NULL)
     terror("memory for list of files");
 
-  fgets(line,MAXLIN,file_list);
+  fgets(line,MAX_SIZE_LINE,file_list);
   while (!feof(file_list)) {
 
     if (line[0]!='@') {
@@ -122,19 +122,19 @@ struct files* load_list_files(struct params *parameters) {
         list_of_files[N].pos=N;
         if (g > parameters->num_genes) {
           if (parameters->verbose)
-            alerta("more genes in file than in parameter, work with min value",list_of_files[N].fname);
+            alert("more genes in file than in parameter, work with min value",list_of_files[N].fname);
           list_of_files[N].num_genes   =parameters->num_genes;
         }
         if (g < parameters->num_genes) {
           if (parameters->verbose)
-            alerta("more genes in parametern than in file, work with min value",list_of_files[N].fname);
+            alert("more genes in parametern than in file, work with min value",list_of_files[N].fname);
           parameters->num_genes = list_of_files[N].num_genes;
         }
 
         N++;
       }
     }
-    fgets(line,MAXLIN,file_list);
+    fgets(line,MAX_SIZE_LINE,file_list);
 
   }
   fclose(file_list);
@@ -202,7 +202,7 @@ int transpose_bin_txt(struct params *parameters,char**probe_id) {
   FILE *f,*f1;
   float **mat;
   int i,j;
-  char new_name[MAXLIN];
+  char new_name[MAX_SIZE_LINE];
   int num_gen=parameters->num_genes;
   int num_experiment=parameters->num_experiments;
   int blq=1000;
@@ -260,7 +260,7 @@ int text_to_bin(struct params *parameters, char** probe_id, struct files *file_l
   FILE *f2;
   float*mat;
   int i;
-  char new_name[MAXLIN];
+  char new_name[MAX_SIZE_LINE];
   int num_gene=parameters->num_genes;
   int num_experiment=parameters->num_experiments;
 
