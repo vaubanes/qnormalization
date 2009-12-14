@@ -1,0 +1,7 @@
+This is the sharedmemory version of Qnorm.
+
+compile with
+
+  make all
+	make test
+
