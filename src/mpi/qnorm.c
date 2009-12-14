@@ -51,10 +51,6 @@ int main(int ac, char **av) {
   int myid;
   int num_processors;
 
-  // chdir("../test/data");
-
-  info("Starting MPI");
-
   MPI_Init(&ac,&av);
 
   MPI_Comm_rank(MPI_COMM_WORLD, &myid);
@@ -73,6 +69,7 @@ int main(int ac, char **av) {
   } else { //Call slave
     slave(parameters,flist,myid);
   }
+
   printf("Processor ID=%i finish \n",myid);
   MPI_Finalize();
   return 0;
@@ -83,19 +80,19 @@ int main(int ac, char **av) {
 // Execute in master processor
 int master(Params *p,int num_processors) {
 
-  int const num_genes=p->NumGenes;
-  int const num_experiments=p->NumExperiments;
-  int const block_size = p->BlockSize;
+  const int num_genes=p->num_genes;
+  const int num_experiments=p->num_experiments;
+  const int block_size = p->block_size;
   int i;
   int index1, index2;
   int count = 0;
-  int tbuf;
+  int text_buf;
   char * buf;
   MPI_Status status;
   Average *total_avg;
   Average *parcial_avg;
-  FILE * fI;
-  FILE * fOut;
+  FILE * file_input;
+  FILE * file_out;
   double * dataout;
   int numblocks = 0;
   int limit = 0;
@@ -125,29 +122,29 @@ int master(Params *p,int num_processors) {
 
 
 
-  tbuf = num_genes * sizeof(Average);
+  text_buf = num_genes * sizeof(Average);
 
-  if ((buf = (char *) malloc(tbuf))==NULL) terror("memory buffer array");
+  if ((buf = (char *) malloc(text_buf))==NULL) terror("memory buffer array");
 
   if ((total_avg   =(Average *)calloc(num_genes,sizeof(Average)))==NULL) terror("memory for Average array");
 
   // Inicialize average array
   for (i=0; i <num_genes;i++) {
-    total_avg[i].Value=0;
-    total_avg[i].Elements=0;
+    total_avg[i].value=0;
+    total_avg[i].elements=0;
   }
 
 
   while (count != numblocks) {
 
-    MPI_Recv(buf,tbuf,MPI_CHAR,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+    MPI_Recv(buf,text_buf,MPI_CHAR,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
 
     parcial_avg = (Average *)buf;
 
     // Acumulate partial average
     for (i = 0; i < num_genes; i++) {
-      total_avg[i].Value += parcial_avg[i].Value;
-      total_avg[i].Elements+= parcial_avg[i].Elements;
+      total_avg[i].value += parcial_avg[i].value;
+      total_avg[i].elements+= parcial_avg[i].elements;
     }
 
     count++;
@@ -170,16 +167,16 @@ int master(Params *p,int num_processors) {
 
   // Calculate final  average  ----------------------------------------------
   for (i=0;i<num_genes;i++) {
-    total_avg[i].Value /=total_avg[i].Elements;
+    total_avg[i].value /=total_avg[i].elements;
   }
 
 
 
-  if ((fOut = fopen(p->FileOut,"wb"))==NULL) terror("opening OUTPUT file");
+  if ((file_out = fopen(p->file_out,"wb"))==NULL) terror("opening OUTPUT file");
 
   if ((dataout=(double *) calloc(num_genes,sizeof(double)))==NULL) terror("memory for dataout array");
 
-  int dIndex[num_genes];
+  int data_index[num_genes];
   int j;
 
   char command[1024];
@@ -187,11 +184,11 @@ int master(Params *p,int num_processors) {
   for (i = 0; i <num_experiments;i++) {
 
     sprintf(namefile,"index%i.tmp",i);
-    if ((fI=fopen(namefile,"rb"))==NULL) terror("opening Index file");
+    if ((file_input=fopen(namefile,"rb"))==NULL) terror("opening Index file");
 
-    fseek(fI,0,SEEK_SET);
-    fread(dIndex,sizeof(int),num_genes,fI);
-    fclose(fI);
+    fseek(file_input,0,SEEK_SET);
+    fread(data_index,sizeof(int),num_genes,file_input);
+    fclose(file_input);
 
     sprintf(command,"rm index%i.tmp",i);
     system(command);
@@ -199,17 +196,17 @@ int master(Params *p,int num_processors) {
 
     for (j=0;j<num_genes;j++) {
 
-      dataout[dIndex[j]] = total_avg[j].Value;
+      dataout[data_index[j]] = total_avg[j].value;
     }
 
-    fseek(fOut,(long)num_genes*i*sizeof(double),SEEK_SET);
-    fwrite(dataout,sizeof(double),num_genes,fOut);
+    fseek(file_out,(long)num_genes*i*sizeof(double),SEEK_SET);
+    fwrite(dataout,sizeof(double),num_genes,file_out);
 
   }
 
-  fclose(fOut);
+  fclose(file_out);
 
-  if (p->Traspose) {
+  if (p->transpose) {
 
     transpose_matrix(p);
   }
@@ -226,16 +223,16 @@ int slave(Params *p, InfoFile* flist, int myid) {
   Average *average; // global Average by row
   int i,j;
 
-  int num_genes=p->NumGenes;
-  int num_experiments=p->NumExperiments;
+  int num_genes=p->num_genes;
+  int num_experiments=p->num_experiments;
   int index1, index2;
   FILE *index_out;
-  char namefile[20];
-  int fin = 1;
+  char name_file[20];
+  int end = 1;
   MPI_Status status;
   int index[2];
 
-  while (fin != 0) {
+  while (end != 0) {
     //Recieve index of experiments from master
     MPI_Recv(index,2,MPI_INT,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status); //
 
@@ -247,7 +244,7 @@ int slave(Params *p, InfoFile* flist, int myid) {
     index2 = index[1];
 
     if ((index1 == -1) && (index2 == -1)) { //if value index is -1 mind master send end signal to slave
-      fin = 0;
+      end = 0;
     } else {
 
       num_experiments = (index2 - index1) + 1; // Calculate number of experiments to work
@@ -259,8 +256,8 @@ int slave(Params *p, InfoFile* flist, int myid) {
       if ((average=(Average *)calloc(num_genes,sizeof(Average)))==NULL) terror("memory for Average array");
 
       for (j=0; j< num_genes;j++) { // init Accumulation array
-        average[j].Value=0;
-        average[j].Elements=0;
+        average[j].value=0;
+        average[j].elements=0;
       }
 
 
@@ -270,7 +267,7 @@ int slave(Params *p, InfoFile* flist, int myid) {
 
 #ifdef DEBUG
         printf("Show file ");
-        debug_print("Load", data_input, flist[i+index1].NumGenes);
+        debug_print("Load", data_input, flist[i+index1].num_genes);
 #endif
 
         qnorm(data_input, dIndex, num_genes); // data_input returns ordered and Index contains the origial position
@@ -282,8 +279,8 @@ int slave(Params *p, InfoFile* flist, int myid) {
         accumulate_row(average, data_input , num_genes); // Calulate partial average
 
         // Save result in a temporal file
-        sprintf(namefile,"index%i.tmp",i+index1);
-        if ((index_out = fopen(namefile,"wb"))==NULL) terror("ERROR: Open file");
+        sprintf(name_file,"index%i.tmp",i+index1);
+        if ((index_out = fopen(name_file,"wb"))==NULL) terror("ERROR: Open file");
 
         //Write array with index array with original positions;
         fwrite(dIndex,sizeof(int),num_genes,index_out);

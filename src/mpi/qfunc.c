@@ -13,7 +13,6 @@
 #include <stdlib.h>
 
 
-
 void terror(char *message) {
   printf(message);
   exit(1);
@@ -23,31 +22,27 @@ void terror(char *message) {
 Params *commandline(int argc, char *argv[]) {
   int i;
   char option;
-  Params *p;
-  p=(Params*)malloc(sizeof(Params));
+  Params *parameters;
+  parameters=(Params*)malloc(sizeof(Params));
 
   /* default values-------------------------------------*/
-  strcpy(p->FileListExperiments,"qInput.txt");
-  strcpy(p->FileOut, "qOut.bin");
-  p->Traspose		 = 0;
-  p->BlockSize		 = BLOCK_SIZE;
-  p->NumGenes     	 = DEFAULT_NUM_GENES ;
-  p->NumExperiments   = DEFAULT_NUM_EXPERIMENTS;
+  strcpy(parameters->file_list_experiments,"qInput.txt");
+  strcpy(parameters->file_out, "qOut.bin");
+  parameters->transpose			 = 0;
+  parameters->block_size		 = BLOCK_SIZE;
+  parameters->num_genes     	 = DEFAULT_NUM_GENES ;
+  parameters->num_experiments    = DEFAULT_NUM_EXPERIMENTS;
   /*----------------------------------------------------------*/
 
   for (i=1; i<argc; i++)  {
     if (!strcmp(argv[i],argv[0])) continue;
-    // mpirun switches:
-    if (strncmp("-p4pg",argv[i],6)==0) continue;
-    if (strncmp("-p4wd",argv[i],6)==0) continue;
-    printf("arg=%s\n",argv[i]);
-    if (argv[i][0] != '-') continue;
+    if (argv[i][0] != '-') terror("dash needed at argument (sintx error)");
 
     option = toupper(argv[i][1]);
 
     // On-Off flags----------------
     if (option == 'T') {
-      p->Traspose=1;
+      parameters->transpose=1;
       continue;
     }
 
@@ -56,25 +51,25 @@ Params *commandline(int argc, char *argv[]) {
 
     switch (option) {
     case 'I':
-      strcpy(p->FileListExperiments,&argv[i][3]);
+      strcpy(parameters->file_list_experiments,&argv[i][3]);
       break;
     case 'O':
-      strcpy(p->FileOut, &argv[i][3]);
+      strcpy(parameters->file_out, &argv[i][3]);
       break;
     case 'E':
-      p->NumExperiments    = atoi(&argv[i][3]);
+      parameters->num_experiments    = atoi(&argv[i][3]);
       break;
     case 'G':
-      p->NumGenes    = atof(&argv[i][3]);
+      parameters->num_genes    = atof(&argv[i][3]);
       break;
     case 'N':
-      p->BlockSize   = atoi(&argv[i][3]);
+      parameters->block_size   = atoi(&argv[i][3]);
       break;
     default:
       terror("Unknown parameter (see syntax)");
     }
   }
-  return p;
+  return parameters;
 }
 
 
@@ -86,11 +81,11 @@ InfoFile* load_input_files(Params *p) {
   FILE *fileInput;
   InfoFile*info=NULL;
   char line[MAX_SIZE_LINE],line2[MAX_SIZE_LINE],t;
-  int N=0,j,g;
+  int index=0,j,g;
 
-  if ((fileInput=fopen(p->FileListExperiments,"rt"))==NULL) terror("opening input file");
+  if ((fileInput=fopen(p->file_list_experiments,"rt"))==NULL) terror("opening input file");
 
-  if ((info=(InfoFile*)calloc(p->NumExperiments,sizeof(InfoFile)))==NULL)
+  if ((info=(InfoFile*)calloc(p->num_experiments,sizeof(InfoFile)))==NULL)
     terror("memory for list of files");
 
   fgets(line,MAX_SIZE_LINE,fileInput);
@@ -99,28 +94,28 @@ InfoFile* load_input_files(Params *p) {
 
     if (line[0]!='@') {
       j=sscanf(line,"%s\t%d\t%c\n",line2,&g,&t);
-      if (N==p->NumExperiments) {
-        fprintf(stderr,"[WARNING] more than %d lines... using first %d as filenames\n",N,N);
-        p->NumExperiments=N;
+      if (index==p->num_experiments) {
+        fprintf(stderr,"[WARNING] more than %d lines... using firts %d as filenames\n",index,index);
+        p->num_experiments=index;
         return info;
       }
 
       if (line2[strlen(line2)-1]=='\t'||line2[strlen(line2)-1]==' ') line2[strlen(line2)-1]=0;
 
       if (strlen(line2)>0) {
-        info[N].FileName=(char*)strdup(line2);
-        info[N].NumGenes   =g;
-        info[N].FileType=t;
-        N++;
+        info[index].file_name=(char*)strdup(line2);
+        info[index].num_genes   =g;
+        info[index].file_type=t;
+        index++;
       }
     }
     fgets(line,MAX_SIZE_LINE,fileInput);
 
   }
   fclose(fileInput);
-  if (N!=p->NumExperiments) {
-    fprintf(stderr,"[WARNING] only %d files.. nExp=%d\n",N,N);
-    p->NumExperiments = N;
+  if (index!=p->num_experiments) {
+    fprintf(stderr,"[WARNING] only %d files.. nExp=%d\n",index,index);
+    p->num_experiments = index;
   }
 
   return info;
@@ -145,8 +140,8 @@ int accumulate_row(Average *average, double *input , int num_genes) {
 
   for (i=0;i<num_genes;i++) {
 
-    average[i].Value+=input[i];
-    average[i].Elements++;
+    average[i].value+=input[i];
+    average[i].elements++;
   }
 
   return 0;
@@ -193,7 +188,7 @@ int calculate_initial_blocks(int numblocks, int num_processors) {
 
 int calculate_index_blocks(int *index,int num_experiments,int block_size) {
 
-  int const index1 = index[1] + 1;
+  const int index1 = index[1] + 1;
 
   int index2 = index1 + block_size -1 ;
 
@@ -270,11 +265,11 @@ int transpose_matrix(Params *p) {
   FILE *file_out;
   double value, **matrix;
   int i,j;
-  char newname[MAX_SIZE_LINE];
-  int const num_genes=p->NumGenes;
-  int const num_experiments=p->NumExperiments;
+  char new_name[MAX_SIZE_LINE];
+  const int num_genes=p->num_genes;
+  const int num_experiments=p->num_experiments;
 
-  if ((file_out=fopen(p->FileOut,"rb"))==NULL)
+  if ((file_out=fopen(p->file_out,"rb"))==NULL)
     terror("[Bin2Text] opening binary output file");
 
   if ((matrix=(double **)calloc(num_genes,sizeof(double*)))==NULL) terror("[Bin2Text] memory for index1");
@@ -291,8 +286,8 @@ int transpose_matrix(Params *p) {
 
   // Save trasposed text tabulated
 
-  sprintf(newname,"%s.txt",p->FileOut);
-  if ((file_out=fopen(newname,"wt"))==NULL)
+  sprintf(new_name,"%s.txt",p->file_out);
+  if ((file_out=fopen(new_name,"wt"))==NULL)
     terror("[Bin2Text] opening tabulated text file out");
 
   for (i=0; i<num_genes;i++) {
@@ -319,9 +314,9 @@ void load_parcial_result(InfoFile*flist, int col, double *dataIn, int num_genes 
   int i;
   double x;
 
-  switch (flist[col].FileType) {
+  switch (flist[col].file_type) {
   case 't':
-    if ((file_temp=fopen(flist[col].FileName,"rt"))==NULL) terror("opening input file (LoadFIle function)");
+    if ((file_temp=fopen(flist[col].file_name,"rt"))==NULL) terror("opening input file (LoadFIle function)");
     for (i=0;i<num_genes;i++) {
       fscanf(file_temp,"%lf\n",&x);
       dataIn[i]=x;

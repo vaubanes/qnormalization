@@ -8,35 +8,31 @@
 #ifndef QFUNC_H_
 #define QFUNC_H_
 
+
 #define BLOCK_SIZE 		 		2
 #define MAX_SIZE_LINE   		500
 #define DEFAULT_NUM_GENES       15
 #define DEFAULT_NUM_EXPERIMENTS 2
 
-#ifdef DEBUG
-  #define info(s) fprintf(stderr,"INFO: %s\n",s);
-#else
-  #define info(s) 
-#endif
 
 typedef struct { // List of files
-  char *FileName;
-  int NumGenes;
-  char FileType;
+  char *file_name;
+  int num_genes;
+  char file_type;
 } InfoFile;
 
 typedef struct { // Contains Average of array
-  double Value;
-  int Elements;
+  double value;
+  int elements;
 } Average;
 
 typedef struct {
-	int  BlockSize;                  	  		// Size of block
-	char FileListExperiments[MAX_SIZE_LINE];    // File with a list of experiments files
-	char FileOut[MAX_SIZE_LINE];    			// Output file name
-	int  Traspose;            		     		// Traspose file to file final results (0:NOT 1:Yes)
-	int  NumGenes;                       		// Number of Genes (rows)
-	int  NumExperiments;                  		// Number of Experiments or samples(cols)
+	int  block_size;                  	  		// Size of block
+	char file_list_experiments[MAX_SIZE_LINE];    // File with a list of experiments files
+	char file_out[MAX_SIZE_LINE];    			// Output file name
+	int  transpose;            		     		// Transpose file to file final results (0:NOT 1:Yes)
+	int  num_genes;                       		// Number of Genes (rows)
+	int  num_experiments;                  		// Number of Experiments or samples(cols)
 } Params;
 
 
