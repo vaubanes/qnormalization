@@ -85,16 +85,16 @@ int main(int ac, char **av) {
 
 void qnorm_main(struct params *parameters, struct files* file_list) {
 
-  float**dataIn;
-  int **dIndex;
-  int **mIndex;
+  float**data_in;
+  int **index;
+  int **memory_index;
   struct average **average; // global Average by row (now a matrx)
   int i,ii,j;
   int num_genes=parameters->num_genes;
   int num_experiments=parameters->num_experiments;
   int numProcesors, nP1, tid;
   int from, to, range;
-  float checkVal=0;
+  float check_value=0;
   // the partial AvG array used by each thread to get the
   // accumulated value, will be shared using a matrix (nPxAvGsize)
   // to facilitate final global average
@@ -108,10 +108,10 @@ void qnorm_main(struct params *parameters, struct files* file_list) {
   // Memory===========================================
   // Index array
   if (parameters->mem_index) { // in memory - full
-    if ((mIndex=(int **)calloc(num_genes,sizeof(int*)))==NULL)
+    if ((memory_index=(int **)calloc(num_genes,sizeof(int*)))==NULL)
       terror("memory for index1");
     for (ii=0; ii<num_genes;ii++)
-      if ((mIndex[ii]=(int *)calloc(num_experiments,sizeof(int)))==NULL)
+      if ((memory_index[ii]=(int *)calloc(num_experiments,sizeof(int)))==NULL)
         terror("memory for index2 full matrix");
   }
   if ((average =(struct average **)calloc(nP1,sizeof(struct average*)))==NULL)
@@ -121,23 +121,23 @@ void qnorm_main(struct params *parameters, struct files* file_list) {
       terror("memory for average 2 full matrix");
 
   // This will always be necessary to decuple the function
-  if ((dIndex =(int**)calloc(numProcesors,sizeof(int *)))==NULL)
+  if ((index =(int**)calloc(numProcesors,sizeof(int *)))==NULL)
     terror("memory for dIndex mat");
   for (ii=0; ii<numProcesors;ii++)
-    if ((dIndex[ii]=(int *)calloc(num_genes,sizeof(int)))==NULL)
+    if ((index[ii]=(int *)calloc(num_genes,sizeof(int)))==NULL)
       terror("memory for dIndex");
-  if ((dataIn =(float**)calloc(numProcesors,sizeof(float*)))==NULL)
+  if ((data_in =(float**)calloc(numProcesors,sizeof(float*)))==NULL)
     terror("memory for dataIn mat");
   for (ii=0; ii<numProcesors;ii++)
-    if ((dataIn[ii]=(float*)calloc(num_genes,sizeof(float)))==NULL)
+    if ((data_in[ii]=(float*)calloc(num_genes,sizeof(float)))==NULL)
       terror("memory for dataIn array");
 
   // oputput file (by cols) (to share the handle)------
-#pragma omp parallel shared(num_genes, num_experiments,mIndex,dataIn, dIndex, average, file_list, parameters) private(i,j,tid,nP1, from, to, range)
+#pragma omp parallel shared(num_genes, num_experiments,memory_index,data_in, index, average, file_list, parameters) private(i,j,tid,nP1, from, to, range)
   { // Open General parallel section [0]
 
-    FILE *fI;
-    int pos;
+    FILE *file_input;
+    int position;
 
 
     tid = omp_get_thread_num();
@@ -145,7 +145,7 @@ void qnorm_main(struct params *parameters, struct files* file_list) {
     if (numProcesors != parameters->num_processors) terror("something wrong in nP");
 
     if (!parameters->mem_index) { // master opens the file
-      if ((fI=fopen("~tmp","wb"))==NULL) terror("opening tmp-index file");
+      if ((file_input=fopen("~tmp","wb"))==NULL) terror("opening tmp-index file");
     }
     // LOAD DISTRIBUTION------------------
     range = num_experiments / numProcesors;
@@ -167,7 +167,7 @@ void qnorm_main(struct params *parameters, struct files* file_list) {
     if (parameters->verbose) fprintf(stderr,"[1st-Step]");
 
     for (i=from; i< to; i++) { // Qnorm for each datafile: STEP 1
-      load_file(file_list, i, dataIn[tid]);
+      load_file(file_list, i, data_in[tid]);
       if (parameters->verbose) {
         fprintf(stderr,".");
         fflush(stderr);
@@ -177,24 +177,24 @@ void qnorm_main(struct params *parameters, struct files* file_list) {
       debug_print("Load",tid, dataIn[tid], fList[i].nG); //debug example
 #endif
       // dataIn returns ordered and Index contains the origial position
-      qnorm_sort(dataIn[tid], dIndex[tid], file_list[i].num_genes);
+      qnorm_sort(data_in[tid], index[tid], file_list[i].num_genes);
 
-      accumulate_row(average[tid], dataIn[tid] , num_genes);
+      accumulate_row(average[tid], data_in[tid] , num_genes);
 
       // now decide how to proceed with indexes
       if (parameters->mem_index) { // in memory - full
         for (j=0;j<num_genes;j++)
-          mIndex[j][i]= dIndex[tid][j];
+          memory_index[j][i]= index[tid][j];
       } else {         // in disk :active Option in v7
-        pos=file_list[i].pos;
-        fseek(fI, num_genes*pos*sizeof(int), SEEK_SET);
-        fwrite(dIndex[tid], sizeof(int), num_genes, fI);
+        position=file_list[i].pos;
+        fseek(file_input, num_genes*position*sizeof(int), SEEK_SET);
+        fwrite(index[tid], sizeof(int), num_genes, file_input);
       }
 
 
     } // end "for i" Qnorm for each datafile: STEP 1
 
-    if (!parameters->mem_index)  fclose(fI);
+    if (!parameters->mem_index)  fclose(file_input);
   }
 
   // HERE only one thread
@@ -208,11 +208,11 @@ void qnorm_main(struct params *parameters, struct files* file_list) {
         average[numProcesors][i].num+=average[j][i].num;
       }
       average[numProcesors][i].average /=average[numProcesors][i].num;
-      checkVal +=average[numProcesors][i].average;
+      check_value +=average[numProcesors][i].average;
     }
-    checkVal /=(float)num_genes;
-    if (parameters->verbose) fprintf(stderr, "checkVal=%f\n",checkVal);
-    fprintf(stderr, "tid=%d checkVal=%f\n",tid,checkVal);
+    check_value /=(float)num_genes;
+    if (parameters->verbose) fprintf(stderr, "checkVal=%f\n",check_value);
+    fprintf(stderr, "tid=%d checkVal=%f\n",tid,check_value);
     fflush(stderr);
 
     { // New section v7--------------------
@@ -229,8 +229,8 @@ void qnorm_main(struct params *parameters, struct files* file_list) {
       // Now copy the global averge into the local ones
       // *distribute* the global array
       for (j=0;j<num_genes;j++)
-        dataIn[0][j] =average[numProcesors][j].average;
-      fwrite(dataIn[0], sizeof(float), num_genes, ff);
+        data_in[0][j] =average[numProcesors][j].average;
+      fwrite(data_in[0], sizeof(float), num_genes, ff);
       fclose(ff);
     } // end new section (store Average Vector)
   } // end tid=0
