@@ -71,6 +71,7 @@ int main(int ac, char **av) {
   struct files *file_list=NULL;
   struct params *parameters=NULL;
 
+
   parameters = command_line(ac,av);
 
   if ((file_list=load_list_files(parameters))==NULL)
@@ -92,18 +93,27 @@ void qnorm_main(struct params *parameters, struct files* file_list) {
   int i,ii,j;
   int num_genes=parameters->num_genes;
   int num_experiments=parameters->num_experiments;
-  int numProcesors, nP1, tid;
+  int num_processors, num_processors_1, tid;
   int from, to, range;
+  int max_number_threads;
   float check_value=0;
   // the partial AvG array used by each thread to get the
   // accumulated value, will be shared using a matrix (nPxAvGsize)
   // to facilitate final global average
 
+  max_number_threads = omp_get_max_threads();
   tid = omp_get_thread_num();
-  numProcesors = parameters->num_processors;  // omp_get_num_threads();
-  nP1=numProcesors+1;
 
-  if (parameters->verbose) fprintf(stderr,"Number of threads = %d\n", numProcesors);
+  num_processors = parameters->num_processors;  // omp_get_num_threads();
+  num_processors_1=num_processors+1;
+
+  if (num_processors > max_number_threads) terror("your processor is  insufficient to run all threads");
+
+  omp_set_num_threads(num_processors);
+
+ // printf("tid=%i \n",tid);
+
+  if (parameters->verbose) fprintf(stderr,"Number of threads = %d\n", num_processors);
 
   // Memory===========================================
   // Index array
@@ -114,26 +124,26 @@ void qnorm_main(struct params *parameters, struct files* file_list) {
       if ((memory_index[ii]=(int *)calloc(num_experiments,sizeof(int)))==NULL)
         terror("memory for index2 full matrix");
   }
-  if ((average =(struct average **)calloc(nP1,sizeof(struct average*)))==NULL)
+  if ((average =(struct average **)calloc(num_processors_1,sizeof(struct average*)))==NULL)
     terror("memory for Average array");
-  for (ii=0; ii<nP1;ii++)
+  for (ii=0; ii<num_processors_1;ii++)
     if ((average[ii]=(struct average *)calloc(num_genes,sizeof(struct average)))==NULL)
       terror("memory for average 2 full matrix");
 
   // This will always be necessary to decuple the function
-  if ((index =(int**)calloc(numProcesors,sizeof(int *)))==NULL)
+  if ((index =(int**)calloc(num_processors,sizeof(int *)))==NULL)
     terror("memory for dIndex mat");
-  for (ii=0; ii<numProcesors;ii++)
+  for (ii=0; ii<num_processors;ii++)
     if ((index[ii]=(int *)calloc(num_genes,sizeof(int)))==NULL)
       terror("memory for dIndex");
-  if ((data_in =(float**)calloc(numProcesors,sizeof(float*)))==NULL)
+  if ((data_in =(float**)calloc(num_processors,sizeof(float*)))==NULL)
     terror("memory for dataIn mat");
-  for (ii=0; ii<numProcesors;ii++)
+  for (ii=0; ii<num_processors;ii++)
     if ((data_in[ii]=(float*)calloc(num_genes,sizeof(float)))==NULL)
       terror("memory for dataIn array");
 
   // oputput file (by cols) (to share the handle)------
-#pragma omp parallel shared(num_genes, num_experiments,memory_index,data_in, index, average, file_list, parameters) private(i,j,tid,nP1, from, to, range)
+#pragma omp parallel shared(num_genes, num_experiments,memory_index,data_in, index, average, file_list, parameters) private(i,j,tid,num_processors_1, from, to, range)
   { // Open General parallel section [0]
 
     FILE *file_input;
@@ -141,14 +151,14 @@ void qnorm_main(struct params *parameters, struct files* file_list) {
 
 
     tid = omp_get_thread_num();
-    numProcesors = omp_get_num_threads();
-    if (numProcesors != parameters->num_processors) terror("something wrong in nP");
+    num_processors = omp_get_num_threads();
+    if (num_processors != parameters->num_processors) terror("Number of threads are  wrong, related number processor parameter, your computer could be insufficient");
 
     if (!parameters->mem_index) { // master opens the file
       if ((file_input=fopen("~tmp","wb"))==NULL) terror("opening tmp-index file");
     }
     // LOAD DISTRIBUTION------------------
-    range = num_experiments / numProcesors;
+    range = num_experiments / num_processors;
     from = tid * range;
     to   = (tid+1)*range;
     if (to > num_experiments) to = num_experiments;
@@ -158,8 +168,8 @@ void qnorm_main(struct params *parameters, struct files* file_list) {
       average[tid][j].average=0;
       average[tid][j].num=0;
       if (tid==0) {
-        average[numProcesors][j].average=0;
-        average[numProcesors][j].num=0;
+        average[num_processors][j].average=0;
+        average[num_processors][j].num=0;
       }
     }
 
@@ -203,12 +213,12 @@ void qnorm_main(struct params *parameters, struct files* file_list) {
   fprintf(stderr, "tid=%d AvG(0)(0)=%f num=%d\n",tid,average[0][0].average, average[0][0].num);
   if (tid==0) {
     for (i=0;i<num_genes;i++) {
-      for (j=0;j<numProcesors;j++) {
-        average[numProcesors][i].average +=average[j][i].average;
-        average[numProcesors][i].num+=average[j][i].num;
+      for (j=0;j<num_processors;j++) {
+        average[num_processors][i].average +=average[j][i].average;
+        average[num_processors][i].num+=average[j][i].num;
       }
-      average[numProcesors][i].average /=average[numProcesors][i].num;
-      check_value +=average[numProcesors][i].average;
+      average[num_processors][i].average /=average[num_processors][i].num;
+      check_value +=average[num_processors][i].average;
     }
     check_value /=(float)num_genes;
     if (parameters->verbose) fprintf(stderr, "checkVal=%f\n",check_value);
@@ -229,7 +239,7 @@ void qnorm_main(struct params *parameters, struct files* file_list) {
       // Now copy the global averge into the local ones
       // *distribute* the global array
       for (j=0;j<num_genes;j++)
-        data_in[0][j] =average[numProcesors][j].average;
+        data_in[0][j] =average[num_processors][j].average;
       fwrite(data_in[0], sizeof(float), num_genes, ff);
       fclose(ff);
     } // end new section (store Average Vector)
