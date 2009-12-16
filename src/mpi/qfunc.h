@@ -27,12 +27,12 @@ typedef struct { // Contains Average of array
 } Average;
 
 typedef struct {
-	int  block_size;                  	  		// Size of block
-	char file_list_experiments[MAX_SIZE_LINE];    // File with a list of experiments files
-	char file_out[MAX_SIZE_LINE];    			// Output file name
-	int  transpose;            		     		// Transpose file to file final results (0:NOT 1:Yes)
-	int  num_genes;                       		// Number of Genes (rows)
-	int  num_experiments;                  		// Number of Experiments or samples(cols)
+  int  block_size;                  	  		// Size of block
+  char file_list_experiments[MAX_SIZE_LINE];    // File with a list of experiments files
+  char file_out[MAX_SIZE_LINE];    			// Output file name
+  int  transpose;            		     		// Transpose file to file final results (0:NOT 1:Yes)
+  int  num_genes;                       		// Number of Genes (rows)
+  int  num_experiments;                  		// Number of Experiments or samples(cols)
 } Params;
 
 

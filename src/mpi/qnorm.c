@@ -32,7 +32,7 @@
 *
 *	@returns >0 if everything was fine <0 if there was an error
 *
-* LAST REVISED: 14/08/09
+* LAST REVISED: 16/12/09
 ******************************************************************************/
 
 
@@ -77,7 +77,8 @@ int main(int ac, char **av) {
 
 
 
-// Execute in master processor
+// This function is executed for one processor
+// This function coordinate the work between slave processors
 int master(Params *p,int num_processors) {
 
   const int num_genes=p->num_genes;
@@ -215,7 +216,7 @@ int master(Params *p,int num_processors) {
 
 }
 
-
+// This function is executed for all slave processors
 int slave(Params *p, InfoFile* flist, int myid) {
 
   double * data_input;
