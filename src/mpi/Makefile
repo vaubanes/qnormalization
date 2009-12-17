@@ -25,5 +25,5 @@ clean:
 
 test: mpi_qnorm
 	lamboot hostnames
-	mpirun -np 4 ./mpi_qnorm -t -e=4 -g=15 -n=2 
+	cd ../../test/data ; mpirun -np 4 ../../src/mpi/mpi_qnorm -t -e=4 -g=15 -n=2 
 
