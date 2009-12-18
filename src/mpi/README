@@ -1,8 +1,19 @@
-This is the openmpi version of Qnorm.
+This is the mpi version of Qnorm.
 
-You need the openmpi package, e.g. on Debian:
+- Run in not cluster system: 
 
-  apt-get install openmpi-dev mpich-bin lam-runtime
+  You need the mpi package, e.g. on Debian:
+
+    apt-get install mpich-bin lam-4-dev liblam4 lam-runtime
+
+  And edit the hostnames with the number of processor that you want emulate, and run mpi
+
+    lamboot hostnames
+   
+- Run in cluster system:
+
+  You need to kown that mpi is installed.
+
 
 compile with
 
