@@ -43,35 +43,39 @@
 #include "time.h"
 #include "qnorm.h"
 
-
+// Point init program, all processors start here
 int main(int ac, char **av) {
 
-  InfoFile *flist=NULL;
-  Params *parameters=NULL;
+  InfoFile *file_list_of_files=NULL;
+  Params *init_parameters=NULL;
   int myid;
   int num_processors;
 
+  // Routines to initialize mpi
   MPI_Init(&ac,&av);
-
   MPI_Comm_rank(MPI_COMM_WORLD, &myid);
-
   MPI_Comm_size(MPI_COMM_WORLD,&num_processors);
 
   printf("Processor ID=%i working Processors=%i \n ",myid,num_processors);
 
-  parameters = commandline(ac,av);
+  // Read initial parameters
+  init_parameters = commandline(ac,av);
 
-  if ((flist=load_input_files(parameters))==NULL)
+  // Read file that contains a list of files of experiments
+  if ((file_list_of_files=load_input_files(init_parameters))==NULL)
     terror("Loading list of files");
 
+  // Distinction between master processor and slave processors
   if (myid == 0) { // Call master
-    master(parameters,num_processors-1);
+    master(init_parameters,num_processors-1);
   } else { //Call slave
-    slave(parameters,flist,myid);
+    slave(init_parameters,file_list_of_files,myid);
   }
 
   printf("Processor ID=%i finish \n",myid);
+
   MPI_Finalize();
+
   return 0;
 }
 
@@ -85,35 +89,34 @@ int master(Params *p,int num_processors) {
   const int num_experiments=p->num_experiments;
   const int block_size = p->block_size;
   int i;
-  int index1, index2;
   int count = 0;
-  int text_buf;
-  char * buf;
+  int size_buffer;
+  char * buffer_recv;
   MPI_Status status;
   Average *total_avg;
   Average *parcial_avg;
-  FILE * file_input;
-  FILE * file_out;
-  double * dataout;
-  int numblocks = 0;
-  int limit = 0;
+  int num_blocks = 0;
+  int number_of_initial_blocks = 0;
   int numblocks_send =0;
-  char namefile[20];
   int index[2];
 
-  index1 = 0;
-  index2 = 0;
-  // Get number of blocks
-  numblocks =  calculate_blocks(num_experiments,block_size);
+  // The master sends blocks of work to slave processors
+  // these blocks are composed of a variable set of experiments
 
-  limit =calculate_initial_blocks(numblocks, num_processors);
+  // First we have to calculate the total number of blocks (depend on block_size)
+  num_blocks =  calculate_blocks(num_experiments,block_size);
 
-  index[0] = -1;
-  index[1] = -1;
+  // The master makes an initial distribution of blocks between the slaves
+  // For to do this, the master needs to know the number of initial blocks to distribute
+  number_of_initial_blocks =calculate_initial_blocks(num_blocks, num_processors);
 
-  // Send initials blocks
-  for (i = 0; i < limit;i++) {
+  // To indicate a block, the master use a array of two elements where:
+  index[0] = -1; // Indicate the first experiment of the block
+  index[1] = -1; // Indicate the last experiment of the block
 
+  // Send initials blocks to slave processors
+  for (i = 0; i < number_of_initial_blocks;i++) {
+	// Calculate the index of the block
     calculate_index_blocks(index,num_experiments,block_size);
 
     MPI_Send(index,2,MPI_INT,i+1,1,MPI_COMM_WORLD);
@@ -121,94 +124,67 @@ int master(Params *p,int num_processors) {
     numblocks_send++;
   }
 
+  //Calculate the size of buffer
+  size_buffer = num_genes * sizeof(Average);
 
+  // The master used this buffer to recieve the result of slave
+  if ((buffer_recv = (char *) malloc(size_buffer))==NULL) terror("memory buffer array");
 
-  text_buf = num_genes * sizeof(Average);
-
-  if ((buf = (char *) malloc(text_buf))==NULL) terror("memory buffer array");
-
+  // This vector will contain the final averages for each gene contains number of experiments and summation
   if ((total_avg   =(Average *)calloc(num_genes,sizeof(Average)))==NULL) terror("memory for Average array");
 
   // Inicialize average array
   for (i=0; i <num_genes;i++) {
-    total_avg[i].value=0;
-    total_avg[i].elements=0;
+    total_avg[i].summation=0;
+    total_avg[i].num_experiments=0;
   }
 
+  // This while will be alive while master will not send all blocks
+  while (count != num_blocks) {
 
-  while (count != numblocks) {
+	// Recieve the results
+    MPI_Recv(buffer_recv,size_buffer,MPI_CHAR,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
 
-    MPI_Recv(buf,text_buf,MPI_CHAR,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+    // The buffer contains the partial average of a set of experiments
+    parcial_avg = (Average *)buffer_recv;
 
-    parcial_avg = (Average *)buf;
-
-    // Acumulate partial average
+    // Add the partial average to global average
     for (i = 0; i < num_genes; i++) {
-      total_avg[i].value += parcial_avg[i].value;
-      total_avg[i].elements+= parcial_avg[i].elements;
+      total_avg[i].summation += parcial_avg[i].summation;
+      total_avg[i].num_experiments+= parcial_avg[i].num_experiments;
     }
 
     count++;
 
-    if (numblocks_send < numblocks) {
+    // if master still has not sent all blocks, send the next block to last slave processor
+    if (numblocks_send < num_blocks) {
 
       calculate_index_blocks(index,num_experiments,block_size);
       numblocks_send++;
       MPI_Send(index,2,MPI_INT,status.MPI_SOURCE,1,MPI_COMM_WORLD);
     }
 
-  }
+  } // end while
 
-  //Send final signal all nodes
+
+  //Send a end signal all slave processors
   for (i=1;i <=num_processors;i++) {
     index[0]= -1;
     index[1]= -1;
     MPI_Send(index,2,MPI_INT,i,1,MPI_COMM_WORLD);
   }
 
-  // Calculate final  average  ----------------------------------------------
+  // Calculate final  average for all genes
   for (i=0;i<num_genes;i++) {
-    total_avg[i].value /=total_avg[i].elements;
+    total_avg[i].summation /=total_avg[i].num_experiments;
   }
 
+  // Store the final result in disk
+  store_final_result(total_avg,num_experiments,num_genes,p->file_out);
 
-
-  if ((file_out = fopen(p->file_out,"wb"))==NULL) terror("opening OUTPUT file");
-
-  if ((dataout=(double *) calloc(num_genes,sizeof(double)))==NULL) terror("memory for dataout array");
-
-  int data_index[num_genes];
-  int j;
-
-  char command[1024];
-
-  for (i = 0; i <num_experiments;i++) {
-
-    sprintf(namefile,"index%i.tmp",i);
-    if ((file_input=fopen(namefile,"rb"))==NULL) terror("opening Index file");
-
-    fseek(file_input,0,SEEK_SET);
-    fread(data_index,sizeof(int),num_genes,file_input);
-    fclose(file_input);
-
-    sprintf(command,"rm index%i.tmp",i);
-    system(command);
-
-
-    for (j=0;j<num_genes;j++) {
-
-      dataout[data_index[j]] = total_avg[j].value;
-    }
-
-    fseek(file_out,(long)num_genes*i*sizeof(double),SEEK_SET);
-    fwrite(dataout,sizeof(double),num_genes,file_out);
-
-  }
-
-  fclose(file_out);
-
+  // If In the arguments is active the transpose parameter
   if (p->transpose) {
-
+	 // Transpose the result matrix to origin positions
     transpose_matrix(p);
   }
 
@@ -257,8 +233,8 @@ int slave(Params *p, InfoFile* flist, int myid) {
       if ((average=(Average *)calloc(num_genes,sizeof(Average)))==NULL) terror("memory for Average array");
 
       for (j=0; j< num_genes;j++) { // init Accumulation array
-        average[j].value=0;
-        average[j].elements=0;
+        average[j].summation=0;
+        average[j].num_experiments=0;
       }
 
 
@@ -302,6 +278,55 @@ int slave(Params *p, InfoFile* flist, int myid) {
 
   return 0;
 
+}
+
+// This function stores the results in a file.
+int store_final_result(Average *total_avg, int num_experiments,int num_genes, char * name_out_file) {
+
+	 FILE * file_input;
+	 FILE * file_out;
+	 int data_index[num_genes];
+	 double * experiment;
+	 int i, j;
+	 char command[1024];
+	 char namefile[20];
+
+
+	  // Open the file
+	  if ((file_out = fopen(name_out_file,"wb"))==NULL) terror("opening OUTPUT file");
+
+	  // Reserv memory to store a experiment
+	  if ((experiment=(double *) calloc(num_genes,sizeof(double)))==NULL) terror("memory for dataout array");
+
+
+
+	  // For each experiment
+	  for (i = 0; i <num_experiments;i++) {
+
+	    sprintf(namefile,"index%i.tmp",i);
+	    if ((file_input=fopen(namefile,"rb"))==NULL) terror("opening Index file");
+
+	    fseek(file_input,0,SEEK_SET);
+	    fread(data_index,sizeof(int),num_genes,file_input);
+	    fclose(file_input);
+
+	    sprintf(command,"rm index%i.tmp",i);
+	    system(command);
+
+
+	    for (j=0;j<num_genes;j++) {
+
+	      experiment[data_index[j]] = total_avg[j].summation;
+	    }
+
+	    fseek(file_out,(long)num_genes*i*sizeof(double),SEEK_SET);
+	    fwrite(experiment,sizeof(double),num_genes,file_out);
+
+	  } // end for
+
+	  fclose(file_out);
+
+	  return 0;
 }
 
 
