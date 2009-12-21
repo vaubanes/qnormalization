@@ -1,8 +1,11 @@
 /******************************************************************************
+* FILE:qfunc.c
+*
 * general functions for Qnormalization
-
-
-* LAST REVISED: 23/02/09
+*
+*  Author : José Manuel Mateos
+*
+* LAST REVISED: 21/12/09
 ******************************************************************************/
 
 #include "qfunc.h"
@@ -12,13 +15,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
+// This function shows a error and end the program
 void terror(char *message) {
   printf(message);
   exit(1);
 }
 
-
+// Read the parameters passed as argument
 Params *commandline(int argc, char *argv[]) {
   int i;
   char option;
@@ -122,7 +125,7 @@ InfoFile* load_input_files(Params *p) {
 }
 
 
-// input returns ordered and Index contains the origial position
+// Input returns ordered and Index contains the origial position
 int qnorm(double *input, int *dindex, int num_genes) {
 
   int j;
@@ -134,14 +137,16 @@ int qnorm(double *input, int *dindex, int num_genes) {
   return 1;
 }
 
+
+// Add a experiment to average vector
 int accumulate_row(Average *average, double *input , int num_genes) {
 
   int i;
 
   for (i=0;i<num_genes;i++) {
 
-    average[i].value+=input[i];
-    average[i].elements++;
+    average[i].summation+=input[i];
+    average[i].num_experiments++;
   }
 
   return 0;
@@ -186,6 +191,7 @@ int calculate_initial_blocks(int numblocks, int num_processors) {
   return nblocks;
 }
 
+// Calculate the index init and end of a block
 int calculate_index_blocks(int *index,int num_experiments,int block_size) {
 
   const int index1 = index[1] + 1;
@@ -205,7 +211,7 @@ int calculate_index_blocks(int *index,int num_experiments,int block_size) {
 }
 
 
-
+// Sort the values of a experiment
 void quick_sort(double *array,int l,int r,int *index) {
 
   int j;
@@ -222,7 +228,7 @@ void quick_sort(double *array,int l,int r,int *index) {
 
 
 
-
+// Auxiliar function of the quick sort divide the array in two arrays
 int partition( double* a, int l, int r, int *indexes) {
 
   int i=l;
@@ -307,7 +313,7 @@ int transpose_matrix(Params *p) {
 
 
 // Load a result of a block calculate for a slave processor
-void load_parcial_result(InfoFile*flist, int col, double *dataIn, int num_genes ) {
+void load_experiment_from_file(InfoFile*flist, int col, double *dataIn, int num_genes ) {
 
   FILE *file_temp;
 

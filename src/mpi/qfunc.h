@@ -1,5 +1,5 @@
 /**
-* qfunc.h
+* FILE:qfunc.h
 *
 *  Author : José Manuel Mateos
 *
@@ -22,8 +22,8 @@ typedef struct { // List of files
 } InfoFile;
 
 typedef struct { // Contains Average of array
-  double value;
-  int elements;
+  double summation;
+  int num_experiments;
 } Average;
 
 typedef struct {
@@ -41,7 +41,7 @@ typedef struct {
 // general functions
 Params *commandline(int argc, char *argv[]);
 InfoFile* load_input_files(Params *);
-void load_parcial_result(InfoFile*flist, int col, double *dataIn, int num_genes);
+void load_experiment_from_file(InfoFile*flist, int col, double *dataIn, int num_genes);
 void terror(char *);
 
 

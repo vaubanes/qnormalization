@@ -1,8 +1,8 @@
 /*
- * qnorm.h
+ *FILE:qnorm.h
  *
  *
- *      Author: Jose Manuel Mateos
+ *  Author: Jose Manuel Mateos
  */
 
 #ifndef QNORM_H_

@@ -7,14 +7,7 @@
 *   quantile Normalization of High density Oliglonucleotide Array Data
 *
 * AUTHOR: Jose Manuel Mateos Duran (23 Feb.09)
-* 23.Feb.09  : Using command line argums
-*              Qnorm fMatrix.IN nRow nExp Normalised.fname  mode
 *
-*              fList  : contains a list of nExp filenames (gene-expression data files)
-*                          line format: fileName[TAB]nGenes[TAB]FileType[NEWLINE]
-*              nRows  : number of genes in each file
-*              Normalised.fname where the normalised values will be stored
-*                       (as a text-tabulated matrix)
 *
 *
 *  Command line Parameters
@@ -78,7 +71,6 @@ int main(int ac, char **av) {
 
   return 0;
 }
-
 
 
 // This function is executed for one processor
@@ -195,9 +187,9 @@ int master(Params *p,int num_processors) {
 // This function is executed for all slave processors
 int slave(Params *p, InfoFile* flist, int myid) {
 
-  double * data_input;
-  int *dIndex;
-  Average *average; // global Average by row
+  double * experiment;
+  int *initial_index_experiment;
+  Average *block_average; // global Average by row
   int i,j;
 
   int num_genes=p->num_genes;
@@ -207,68 +199,74 @@ int slave(Params *p, InfoFile* flist, int myid) {
   char name_file[20];
   int end = 1;
   MPI_Status status;
-  int index[2];
+  int block_indexs[2];
 
+  // While the master doesn't send end signal
   while (end != 0) {
-    //Recieve index of experiments from master
-    MPI_Recv(index,2,MPI_INT,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status); //
+    //Receive from master a block, by a matrix with start and end indexs
+    MPI_Recv(block_indexs,2,MPI_INT,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status); //
 
 #if DEBUG
-    // printf("Slave procesor id=%i index1=%i index2=%i \n",myID,index[0], index[1]);
+    // printf("Slave processor id=%i index1=%i index2=%i \n",myID,index[0], index[1]);
 #endif
 
-    index1 = index[0];
-    index2 = index[1];
+    index1 = block_indexs[0];
+    index2 = block_indexs[1];
 
-    if ((index1 == -1) && (index2 == -1)) { //if value index is -1 mind master send end signal to slave
+    //if value index is -1 mind master send end signal to slave and end the while
+    if ((index1 == -1) && (index2 == -1)) {
       end = 0;
     } else {
 
-      num_experiments = (index2 - index1) + 1; // Calculate number of experiments to work
+      // Calculate the number of experiment of the block
+      num_experiments = (index2 - index1) + 1;
 
-      if ((dIndex=(int *)calloc(num_genes,sizeof(int)))==NULL) terror("memory for index2");
+      // Reserve memory to store original index of a experiment
+      if ((initial_index_experiment=(int *)calloc(num_genes,sizeof(int)))==NULL) terror("memory for index2");
 
-      if ((data_input=(double *)calloc(num_genes,sizeof(double)))==NULL) terror("memory for dataIn array");
+      // Reserve memory to store a experiment
+      if ((experiment=(double *)calloc(num_genes,sizeof(double)))==NULL) terror("memory for dataIn array");
 
-      if ((average=(Average *)calloc(num_genes,sizeof(Average)))==NULL) terror("memory for Average array");
+      // Reserve memory to store average of a experiment
+      if ((block_average=(Average *)calloc(num_genes,sizeof(Average)))==NULL) terror("memory for Average array");
 
       for (j=0; j< num_genes;j++) { // init Accumulation array
-        average[j].summation=0;
-        average[j].num_experiments=0;
+        block_average[j].summation=0;
+        block_average[j].num_experiments=0;
       }
 
-
-      for (i=0; i< num_experiments; i++) { // Apply Qnorm for each experiments
-
-        load_parcial_result(flist, i+index1, data_input,num_genes); //Load value of genes of experiment i
+      // For each experiment into a block
+      for (i=0; i< num_experiments; i++) {
+    	// Load a experiment form file
+        load_experiment_from_file(flist, i+index1, experiment,num_genes); //Load value of genes of experiment i
 
 #ifdef DEBUG
         printf("Show file ");
         debug_print("Load", data_input, flist[i+index1].num_genes);
 #endif
-
-        qnorm(data_input, dIndex, num_genes); // data_input returns ordered and Index contains the origial position
+        // Sort the experiment vector and store in initial index vector the original positions
+        qnorm(experiment, initial_index_experiment, num_genes);
 
 #ifdef DEBUG
         debug_print("Sorted", data_input, num_genes);
 #endif
+        // Add the vector sorted to a experiment average vector
+        accumulate_row(block_average, experiment , num_genes);
 
-        accumulate_row(average, data_input , num_genes); // Calulate partial average
-
-        // Save result in a temporal file
+        // Save the result in a temporal file
         sprintf(name_file,"index%i.tmp",i+index1);
         if ((index_out = fopen(name_file,"wb"))==NULL) terror("ERROR: Open file");
-
         //Write array with index array with original positions;
-        fwrite(dIndex,sizeof(int),num_genes,index_out);
+        fwrite(initial_index_experiment,sizeof(int),num_genes,index_out);
 
         fclose(index_out);
       } // End  bucle for
 
+      // When the slave has finished all experiments of the a block sends the average to master
       char *buf;
 
       if ((buf = (char *) malloc(sizeof(Average)* num_genes)) == NULL)  terror("ERROR MEMORY: Sending diagonal");
-      buf = (char *) average;
+      buf = (char *) block_average;
 
       MPI_Send(buf,sizeof(Average)*num_genes,MPI_BYTE,0,1,MPI_COMM_WORLD);
 
@@ -285,12 +283,11 @@ int store_final_result(Average *total_avg, int num_experiments,int num_genes, ch
 
 	 FILE * file_input;
 	 FILE * file_out;
-	 int data_index[num_genes];
+	 int initial_positions[num_genes];
 	 double * experiment;
 	 int i, j;
 	 char command[1024];
 	 char namefile[20];
-
 
 	  // Open the file
 	  if ((file_out = fopen(name_out_file,"wb"))==NULL) terror("opening OUTPUT file");
@@ -299,26 +296,28 @@ int store_final_result(Average *total_avg, int num_experiments,int num_genes, ch
 	  if ((experiment=(double *) calloc(num_genes,sizeof(double)))==NULL) terror("memory for dataout array");
 
 
-
 	  // For each experiment
 	  for (i = 0; i <num_experiments;i++) {
 
+		// Read the partial result stored by a slave
 	    sprintf(namefile,"index%i.tmp",i);
 	    if ((file_input=fopen(namefile,"rb"))==NULL) terror("opening Index file");
 
 	    fseek(file_input,0,SEEK_SET);
-	    fread(data_index,sizeof(int),num_genes,file_input);
+	    fread(initial_positions,sizeof(int),num_genes,file_input);
 	    fclose(file_input);
 
+	    // Remove the temporal files created by slave processor
 	    sprintf(command,"rm index%i.tmp",i);
 	    system(command);
 
-
+	    // For each genes of a experiment
 	    for (j=0;j<num_genes;j++) {
-
-	      experiment[data_index[j]] = total_avg[j].summation;
+	      // Save in the original position the average value by row
+	      experiment[initial_positions[j]] = total_avg[j].summation;
 	    }
 
+	    // Store the experiment
 	    fseek(file_out,(long)num_genes*i*sizeof(double),SEEK_SET);
 	    fwrite(experiment,sizeof(double),num_genes,file_out);
 
